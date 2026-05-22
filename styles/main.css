@@ -1,0 +1,74 @@
+/* styles/main.css — DealerScan PWA baseline
+   Dark-first, mobile-first. iOS-safe area aware. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0b0b0c;
+  color: #f0f0f2;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* iOS notch + home-indicator safe areas */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+}
+
+[data-screen] { display: flex; flex-direction: column; flex: 1; }
+[data-screen][hidden] { display: none; }
+
+h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 1rem 0; }
+
+button {
+  font: inherit;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  background: #2a6df4;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+input[type="text"], input[type="search"] {
+  font: inherit;
+  width: 100%;
+  border: 1px solid #2a2a2e;
+  background: #16161a;
+  color: #f0f0f2;
+  border-radius: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  outline: none;
+}
+input:focus { border-color: #2a6df4; }
+
+.muted { color: rgba(240, 240, 242, 0.55); }
+.scaffold-note {
+  background: #16161a;
+  border: 1px dashed #2a2a2e;
+  border-radius: 0.625rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
