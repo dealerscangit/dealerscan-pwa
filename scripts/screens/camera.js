@@ -94,22 +94,29 @@ async function startCamera() {
       },
       audio: false,
     });
+
+    // CRITICAL: hide the fallback BEFORE attaching srcObject. If the user
+    // is mid-retry, the fallback overlay might still be visible from the
+    // previous failed attempt — we got a stream, so we're succeeding.
+    hideFallback();
+
     video.srcObject = _stream;
+
+    // Belt and suspenders: hide fallback again on loadedmetadata, which
+    // fires when the video actually has frame data ready to render.
+    video.addEventListener("loadedmetadata", hideFallback, { once: true });
 
     // iOS Safari sometimes throws on play() if the user hasn't interacted yet,
     // or if the video element wasn't ready. The element is muted+playsinline
-    // so autoplay policy allows it, but we catch defensively. If play() fails
-    // we DON'T treat it as a hard error — the stream is still attached and
-    // the video will usually start on its own. We only fall back if we
-    // genuinely have no stream.
+    // so autoplay policy allows it, but we catch defensively. play() rejection
+    // is NOT a fatal error — the stream is still attached.
     try {
       await video.play();
     } catch (playErr) {
       console.warn("[camera] video.play() rejected (usually harmless on iOS):", playErr);
-      // Don't show fallback — stream is live, video will start. Just log it.
     }
 
-    // Confirm the fallback is hidden in case it was visible from a prior attempt.
+    // Final hideFallback after everything settles
     hideFallback();
   } catch (err) {
     console.warn("[camera] getUserMedia failed:", err);
