@@ -139,6 +139,23 @@ hashes the file content. Not urgent.
 
 ---
 
+### 🟡 Version footer on home screen ("DealerScan PWA v0.1")
+
+Small faint label at the bottom of the home screen showing the app version.
+Helps with support ("what version are you on?") and gives polish-feel that
+matches the extension.
+
+**Why review:** the version *string* may need updating to a real semver
+before launch ("v0.1" implies pre-release). Keep the element, update the text.
+
+**File / location:**
+- `index.html` — `<div class="version-footer">` inside the home screen section
+- `styles/main.css` — `.version-footer` rule block
+
+**Removal test:** N/A — this is a keep.
+
+---
+
 ## How to add new items
 
 When adding new temp code, append a new section above following the format:

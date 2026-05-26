@@ -14,19 +14,22 @@ export function attachCustomerHandlers(showScreen, session) {
   _session = session;
 
   const input = document.getElementById("customer-input");
-  const newCta = document.getElementById("new-customer-cta");
   const newBtn = document.getElementById("btn-new-customer");
+  const echo = document.getElementById("new-customer-name-echo");
 
   if (input) {
     input.addEventListener("input", () => {
       const q = input.value.trim();
       filterAndPaint(q);
-      // Show the "+ Use as new customer" CTA only when typed text doesn't
-      // match an existing customer (case-insensitive).
+      // Show the inline "+ Use as new customer" CTA only when typed text
+      // doesn't match an existing customer. Echo the typed value back so
+      // the user sees exactly what name will be created.
       const matchesExisting = _allCustomers.some(
         (n) => n.toLowerCase() === q.toLowerCase()
       );
-      if (newCta) newCta.hidden = !(q.length > 0 && !matchesExisting);
+      const shouldShow = q.length > 0 && !matchesExisting;
+      if (newBtn) newBtn.hidden = !shouldShow;
+      if (echo) echo.textContent = q;
     });
   }
 
@@ -43,9 +46,9 @@ export function attachCustomerHandlers(showScreen, session) {
 
 export async function renderCustomer() {
   const input = document.getElementById("customer-input");
-  const newCta = document.getElementById("new-customer-cta");
+  const newBtn = document.getElementById("btn-new-customer");
   if (input) input.value = "";
-  if (newCta) newCta.hidden = true;
+  if (newBtn) newBtn.hidden = true;
 
   // Use cached history if available; refresh in background
   const cached = getCachedHistory();
@@ -64,7 +67,6 @@ export async function renderCustomer() {
       paintError();
     }
   }
-
   // Focus the input shortly after the screen settles so the user can just
   // start typing if they want to. Skip on touch devices to avoid the
   // keyboard popping up unprompted.
@@ -85,7 +87,12 @@ function filterAndPaint(query) {
 
 function paintLoading() {
   const list = document.getElementById("customer-recent-list");
-  if (list) list.innerHTML = '<div class="recent-empty muted small">Loading…</div>';
+  if (list) {
+    list.innerHTML = `
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>`;
+  }
 }
 function paintError() {
   const list = document.getElementById("customer-recent-list");

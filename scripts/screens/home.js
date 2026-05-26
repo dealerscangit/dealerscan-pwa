@@ -42,7 +42,13 @@ async function renderRecentList() {
   if (_historyCache) {
     paintRecentList(list, count, _historyCache);
   } else {
-    list.innerHTML = '<div class="recent-empty muted small">Loading…</div>';
+    // First load: show skeleton placeholders (matches the HTML initial state).
+    // If we re-render from a prior visit, the skeletons may have been replaced;
+    // restore them so the user sees "something is loading" feedback.
+    list.innerHTML = `
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>
+      <div class="skeleton skeleton-row"></div>`;
     if (count) count.textContent = "";
   }
 

@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=9" />
 
-  <link rel="stylesheet" href="styles/main.css?v=10" />
+  <link rel="stylesheet" href="styles/main.css?v=11" />
 </head>
 <body>
   <main>
@@ -52,7 +52,9 @@
           <span class="dim small" id="recent-count"></span>
         </div>
         <div class="recent-list" id="recent-list">
-          <div class="recent-empty muted small">Loading…</div>
+          <div class="skeleton skeleton-row"></div>
+          <div class="skeleton skeleton-row"></div>
+          <div class="skeleton skeleton-row"></div>
         </div>
       </section>
 
@@ -60,6 +62,8 @@
       <footer class="dev-footer">
         <button id="signout-btn" class="text-link" type="button">Sign out</button>
       </footer>
+
+      <div class="version-footer" id="version-footer">DealerScan PWA v0.1</div>
     </section>
 
     <!-- ─────────────────────────────────────────────
@@ -75,6 +79,18 @@
 
       <div class="search-wrap">
         <input id="customer-input" type="text" placeholder="Type customer name…" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" />
+
+        <!-- Inline "use as new" CTA — appears immediately under the input when
+             typed text doesn't match an existing customer. Sits where the
+             salesperson's finger already is, no scrolling required when the
+             keyboard is up. -->
+        <button class="inline-new-cta" id="btn-new-customer" type="button" hidden>
+          <span class="inline-new-cta-plus" aria-hidden="true">+</span>
+          <span class="inline-new-cta-label">Use "<span id="new-customer-name-echo"></span>" as new customer</span>
+          <span class="inline-new-cta-chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </span>
+        </button>
       </div>
 
       <div class="recent-section">
@@ -85,12 +101,6 @@
           <div class="recent-empty muted small">Loading…</div>
         </div>
       </div>
-
-      <footer class="sticky-action" id="new-customer-cta" hidden>
-        <button class="primary-button" id="btn-new-customer" type="button">
-          + Use as new customer
-        </button>
-      </footer>
     </section>
 
     <!-- ─────────────────────────────────────────────
@@ -168,6 +178,6 @@
 
   </main>
 
-  <script type="module" src="scripts/app.js?v=9"></script>
+  <script type="module" src="scripts/app.js?v=11"></script>
 </body>
 </html>
