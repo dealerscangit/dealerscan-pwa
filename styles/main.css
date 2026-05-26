@@ -1,5 +1,28 @@
-/* styles/main.css — DealerScan PWA baseline
-   Dark-first, mobile-first. iOS-safe area aware. */
+/* styles/main.css — DealerScan PWA
+   Dark, calm-accent design system. iOS-safe area aware. */
+
+:root {
+  /* Surfaces */
+  --bg: #0a0a0c;
+  --surface: #16161a;
+  --surface-hover: #1f1f25;
+  --border: #2a2a32;
+
+  /* Text */
+  --text: #f0f0f2;
+  --text-muted: rgba(240, 240, 242, 0.6);
+  --text-dim: rgba(240, 240, 242, 0.4);
+
+  /* Accent — calm violet, premium not neon */
+  --accent: #8b5cf6;
+  --accent-soft: #a78bfa;
+  --accent-glow: rgba(139, 92, 246, 0.25);
+
+  /* Geometry */
+  --radius-lg: 1rem;
+  --radius-md: 0.75rem;
+  --radius-sm: 0.5rem;
+}
 
 * { box-sizing: border-box; }
 
@@ -7,8 +30,8 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: #0b0b0c;
-  color: #f0f0f2;
+  background: var(--bg);
+  color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
@@ -29,20 +52,34 @@ main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.25rem;
+  padding: 1.5rem 1.25rem;
+  min-height: 0; /* allows flex children to scroll */
 }
 
-[data-screen] { display: flex; flex-direction: column; flex: 1; }
+[data-screen] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
 [data-screen][hidden] { display: none; }
 
-h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 1rem 0; }
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5rem 0;
+}
+
+.muted { color: var(--text-muted); }
+.dim   { color: var(--text-dim); }
 
 button {
   font: inherit;
   border: none;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   padding: 0.875rem 1.25rem;
-  background: #2a6df4;
+  background: var(--accent);
   color: #fff;
   font-weight: 600;
   cursor: pointer;
@@ -54,21 +91,97 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 input[type="text"], input[type="search"] {
   font: inherit;
   width: 100%;
-  border: 1px solid #2a2a2e;
-  background: #16161a;
-  color: #f0f0f2;
-  border-radius: 0.625rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-md);
   padding: 0.75rem 0.875rem;
   outline: none;
 }
-input:focus { border-color: #2a6df4; }
+input:focus { border-color: var(--accent); }
 
-.muted { color: rgba(240, 240, 242, 0.55); }
+/* ────────────────────────────────────────
+   Sign-in screen — salesperson picker grid
+   ──────────────────────────────────────── */
+
+.signin-header {
+  padding: 0.5rem 0 1.5rem 0;
+  flex-shrink: 0;
+}
+.signin-header h1 { margin-bottom: 0.375rem; }
+.signin-header p  { margin: 0; font-size: 0.9375rem; }
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 1rem;
+}
+
+.picker-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 1.125rem 0.5rem;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text);
+}
+.picker-tile:active {
+  transform: scale(0.96);
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.picker-tile-initial {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-soft) 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.125rem;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.picker-tile-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+/* ────────────────────────────────────────
+   Home screen (placeholder for now)
+   ──────────────────────────────────────── */
+
+.home-greeting {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0.5rem 0 1.5rem 0;
+}
+
 .scaffold-note {
-  background: #16161a;
-  border: 1px dashed #2a2a2e;
-  border-radius: 0.625rem;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
   padding: 1rem;
   font-size: 0.875rem;
   line-height: 1.5;
+  color: var(--text-muted);
 }

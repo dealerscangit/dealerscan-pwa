@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0b0c" />
+  <meta name="theme-color" content="#0a0a0c" />
   <title>DealerScan</title>
 
   <!-- PWA manifest -->
   <link rel="manifest" href="manifest.json" />
 
-  <!-- iOS "Add to Home Screen" specifics (iOS ignores manifest for some of these) -->
+  <!-- iOS Add-to-Home-Screen specifics -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
@@ -21,20 +21,20 @@
   <main>
     <!-- Screen: sign-in (first launch / no salesperson chosen) -->
     <section data-screen="signin" hidden>
-      <h1>Welcome to DealerScan</h1>
-      <p class="muted">Pick your name to get started.</p>
-      <div class="scaffold-note">
-        Sign-in list comes from <code>scripts/currentUser.js → SALESPEOPLE</code>.
-        Add the team roster there, then this screen renders the picker.
+      <header class="signin-header">
+        <h1>Welcome</h1>
+        <p class="muted">Tap your name to get started.</p>
+      </header>
+      <div class="picker-grid" id="picker-grid">
+        <!-- tiles injected by JS from SALESPEOPLE -->
       </div>
     </section>
 
     <!-- Screen: home (signed in) -->
     <section data-screen="home" hidden>
-      <h1>DealerScan</h1>
+      <h1 class="home-greeting" id="home-greeting">Hi 👋</h1>
       <div class="scaffold-note">
-        Scaffolding only. Home screen with "New Scan" button + recent activity
-        gets built in the next pass.
+        Sign-in is working. Home screen with "New Scan" button and recent activity is next.
       </div>
     </section>
   </main>
