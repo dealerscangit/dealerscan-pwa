@@ -73,21 +73,18 @@ function paintCustomerChip() {
 
 async function startCamera() {
   hideFallback();
-  setDiag("starting…");
 
   // Stop any previous stream first (e.g., if user retries after denial)
   stopCamera();
 
   const video = document.getElementById("camera-video");
-  if (!video) { setDiag("no <video> element"); return; }
+  if (!video) return;
 
   if (!navigator.mediaDevices?.getUserMedia) {
-    setDiag("no mediaDevices API · isSecureContext=" + window.isSecureContext + " · protocol=" + location.protocol);
-    showFallback("Your browser doesn't support camera access. Use the library picker below.");
+      showFallback("Your browser doesn't support camera access. Use the library picker below.");
     return;
   }
 
-  setDiag("calling getUserMedia…");
   try {
     _stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -97,8 +94,6 @@ async function startCamera() {
       },
       audio: false,
     });
-
-    setDiag("got stream · tracks=" + _stream.getVideoTracks().length);
 
     // CRITICAL: hide the fallback BEFORE attaching srcObject. If the user
     // is mid-retry, the fallback overlay might still be visible from the
@@ -111,8 +106,7 @@ async function startCamera() {
     // fires when the video actually has frame data ready to render.
     video.addEventListener("loadedmetadata", () => {
       hideFallback();
-      setDiag("video ready · " + video.videoWidth + "x" + video.videoHeight);
-    }, { once: true });
+        }, { once: true });
 
     // iOS Safari sometimes throws on play() if the user hasn't interacted yet,
     // or if the video element wasn't ready. The element is muted+playsinline
@@ -120,17 +114,14 @@ async function startCamera() {
     // is NOT a fatal error — the stream is still attached.
     try {
       await video.play();
-      setDiag("video.play() ok");
     } catch (playErr) {
       console.warn("[camera] video.play() rejected:", playErr);
-      setDiag("video.play() rejected: " + (playErr?.name || playErr?.message || "unknown") + " — stream still attached");
     }
 
     // Final hideFallback after everything settles
     hideFallback();
   } catch (err) {
     console.warn("[camera] getUserMedia failed:", err);
-    setDiag("getUserMedia FAILED · " + (err?.name || "unknown") + ": " + (err?.message || ""));
     if (err?.name === "NotAllowedError") {
       showFallback("Camera permission was denied. Enable it in Settings → Safari → Camera, or pick from your library.");
     } else if (err?.name === "NotFoundError" || err?.name === "OverconstrainedError") {
@@ -139,20 +130,6 @@ async function startCamera() {
       showFallback("Couldn't open the camera. You can pick photos from your library instead.");
     }
   }
-}
-
-// DEV: write a diagnostic message to a hidden element so we can read it on
-// the device without a remote inspector. Remove before public launch.
-function setDiag(msg) {
-  let el = document.getElementById("camera-diag");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "camera-diag";
-    el.style.cssText = "position:fixed;left:0;right:0;bottom:0;padding:8px 10px;background:rgba(0,0,0,0.85);color:#fff;font:11px/1.3 monospace;z-index:9999;max-height:30vh;overflow-y:auto;word-break:break-all";
-    document.body.appendChild(el);
-  }
-  const stamp = new Date().toLocaleTimeString().split(" ")[0];
-  el.innerHTML = `<div>[${stamp}] ${msg}</div>` + el.innerHTML;
 }
 
 function stopCamera() {

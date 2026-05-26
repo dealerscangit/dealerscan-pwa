@@ -89,6 +89,12 @@ main {
 }
 [data-screen][hidden] { display: none; }
 
+/* HTML's `hidden` attribute defaults to `display:none`, but any explicit
+   `display: flex` (or similar) rule overrides it. Elements we toggle from
+   JS via `.hidden = true/false` need this override or they stay visible.
+   Burned by this once with .camera-fallback; codifying the fix project-wide. */
+[hidden] { display: none !important; }
+
 @keyframes screenFadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
