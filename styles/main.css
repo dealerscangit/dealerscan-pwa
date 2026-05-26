@@ -35,23 +35,28 @@
 
 * { box-sizing: border-box; }
 
-html, body {
+html {
   margin: 0;
   padding: 0;
   height: 100%;
   background: var(--bg-gradient);
-  background-attachment: fixed;
+  /* No background-attachment:fixed — flaky on iOS Safari, causes the
+     gradient to detach from scroll and reveal the white viewport underneath. */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh; /* dynamic viewport so iOS URL-bar collapse doesn't leave gaps */
+  background: var(--bg-gradient);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
-}
-
-body {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  /* iOS safe areas */
+  /* iOS safe areas — padding is *inside* the body, so the gradient fills it. */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
