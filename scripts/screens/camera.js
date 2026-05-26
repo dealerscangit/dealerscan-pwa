@@ -95,8 +95,22 @@ async function startCamera() {
       audio: false,
     });
     video.srcObject = _stream;
-    // iOS sometimes needs an explicit play() after srcObject assign in PWA mode
-    try { await video.play(); } catch (_) { /* autoplay is muted+playsinline, will resolve */ }
+
+    // iOS Safari sometimes throws on play() if the user hasn't interacted yet,
+    // or if the video element wasn't ready. The element is muted+playsinline
+    // so autoplay policy allows it, but we catch defensively. If play() fails
+    // we DON'T treat it as a hard error — the stream is still attached and
+    // the video will usually start on its own. We only fall back if we
+    // genuinely have no stream.
+    try {
+      await video.play();
+    } catch (playErr) {
+      console.warn("[camera] video.play() rejected (usually harmless on iOS):", playErr);
+      // Don't show fallback — stream is live, video will start. Just log it.
+    }
+
+    // Confirm the fallback is hidden in case it was visible from a prior attempt.
+    hideFallback();
   } catch (err) {
     console.warn("[camera] getUserMedia failed:", err);
     if (err?.name === "NotAllowedError") {
