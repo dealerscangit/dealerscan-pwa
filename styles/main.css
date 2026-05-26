@@ -4,7 +4,8 @@
 
 :root {
   /* Surfaces */
-  --bg-gradient: linear-gradient(160deg, #1a5296, #163f7a, #112f63);
+  --bg-gradient: linear-gradient(170deg, #1a5296 0%, #163f7a 45%, #112f63 80%, #0d2654 100%);
+  --bg-bottom: #0d2654; /* deepest stop — used as solid fallback so safe-area zones blend in */
   --surface:        rgba(255, 255, 255, 0.08);
   --surface-hover:  rgba(255, 255, 255, 0.14);
   --surface-active: rgba(255, 255, 255, 0.18);
@@ -40,7 +41,7 @@ html {
   padding: 0;
   height: 100%;
   background: var(--bg-gradient);
-  background-color: #112f63; /* solid fallback (gradient bottom) for any zone the gradient doesn't reach */
+  background-color: var(--bg-bottom); /* solid fallback (gradient bottom) for any zone the gradient doesn't reach */
   overscroll-behavior-y: none;
 }
 
@@ -76,7 +77,7 @@ body::before {
   right: 0;
   bottom: 0;
   background: var(--bg-gradient);
-  background-color: #112f63;
+  background-color: var(--bg-bottom);
   z-index: -1;
   pointer-events: none;
 }
