@@ -40,8 +40,9 @@ html {
   padding: 0;
   height: 100%;
   background: var(--bg-gradient);
-  /* No background-attachment:fixed — flaky on iOS Safari, causes the
-     gradient to detach from scroll and reveal the white viewport underneath. */
+  /* Disable iOS rubber-band overscroll — bouncing exposes the viewport
+     under the html element which defaults to white. */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -54,6 +55,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
   display: flex;
   flex-direction: column;
   /* iOS safe areas — padding is *inside* the body, so the gradient fills it. */
