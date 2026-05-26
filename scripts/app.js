@@ -1,5 +1,5 @@
 // scripts/app.js
-// Entry point. Wires up screens, injects the picker grid, handles sign-in.
+// Entry point. Orchestrates screen routing and shared state.
 
 import {
   createCustomerFolder,
@@ -13,11 +13,43 @@ import {
   clearCurrentSalesperson,
   isSignedIn,
 } from "./currentUser.js";
+import { renderSigninPicker, attachSigninHandlers } from "./screens/signin.js";
+import { renderHome, attachHomeHandlers } from "./screens/home.js";
+import { renderCustomer, attachCustomerHandlers } from "./screens/customer.js";
+import { renderCamera, attachCameraHandlers } from "./screens/camera.js";
+import { renderReview, attachReviewHandlers } from "./screens/review.js";
+import { renderUpload, attachUploadHandlers } from "./screens/upload.js";
+import { renderDone, attachDoneHandlers } from "./screens/done.js";
 
-// Dev debug helper — window.DS.user.clearCurrentSalesperson() also works from console.
+// ───────────────────────────────────────────────────────────
+// Shared session state
+// Lives only in memory; cleared on full page reload.
+// Persists across screen transitions within a single "scan session."
+// ───────────────────────────────────────────────────────────
+export const session = {
+  // Customer info populated on screen 3, used by 4/5/6/7
+  customerName: null,
+  isNewCustomer: false,
+  folderId: null, // populated lazily after first upload attempt
+
+  // Photos populated by camera (or stub) on screen 4
+  // Each entry: { id, dataUrl, filename, status: 'pending'|'active'|'success'|'failed' }
+  photos: [],
+
+  reset() {
+    this.customerName = null;
+    this.isNewCustomer = false;
+    this.folderId = null;
+    this.photos = [];
+  },
+};
+
+// Dev debug helper
 window.DS = {
   api: { createCustomerFolder, uploadPhoto, getCustomerHistory },
   user: { SALESPEOPLE, getCurrentSalesperson, setCurrentSalesperson, clearCurrentSalesperson, isSignedIn },
+  session,
+  go: (screen) => showScreen(screen),
 };
 
 console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() || "(none)");
@@ -25,65 +57,47 @@ console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() ||
 // ───────────────────────────────────────────────────────────
 // Screen routing
 // ───────────────────────────────────────────────────────────
-function showScreen(id) {
+const SCREEN_RENDERERS = {
+  signin:   renderSigninPicker,
+  home:     renderHome,
+  customer: renderCustomer,
+  camera:   renderCamera,
+  review:   renderReview,
+  upload:   renderUpload,
+  done:     renderDone,
+};
+
+export function showScreen(id) {
   document.querySelectorAll("[data-screen]").forEach((el) => {
     el.hidden = el.dataset.screen !== id;
   });
+  // Re-render the screen we're entering so it reflects current state.
+  const renderer = SCREEN_RENDERERS[id];
+  if (renderer) renderer();
+  // Scroll back to top whenever we change screens.
+  window.scrollTo(0, 0);
 }
 
 // ───────────────────────────────────────────────────────────
-// Sign-in screen — picker tile grid
+// Universal back-button wiring
+// Any <button data-back="screenId"> sends us to that screen.
 // ───────────────────────────────────────────────────────────
-function renderSigninPicker() {
-  const grid = document.getElementById("picker-grid");
-  if (!grid) return;
-  grid.innerHTML = "";
-  SALESPEOPLE.forEach((name) => {
-    const tile = document.createElement("button");
-    tile.className = "picker-tile";
-    tile.type = "button";
-    tile.setAttribute("aria-label", `Sign in as ${name}`);
-
-    const initial = document.createElement("span");
-    initial.className = "picker-tile-initial";
-    initial.textContent = name.charAt(0);
-
-    const label = document.createElement("span");
-    label.className = "picker-tile-name";
-    label.textContent = name;
-
-    tile.appendChild(initial);
-    tile.appendChild(label);
-    tile.addEventListener("click", () => handleSignIn(name));
-    grid.appendChild(tile);
+function attachBackButtons() {
+  document.querySelectorAll("[data-back]").forEach((btn) => {
+    btn.addEventListener("click", () => showScreen(btn.dataset.back));
   });
 }
 
-function handleSignIn(name) {
-  setCurrentSalesperson(name);
-  renderHomeGreeting();
-  showScreen("home");
-}
-
 // ───────────────────────────────────────────────────────────
-// Home screen
-// ───────────────────────────────────────────────────────────
-function renderHomeGreeting() {
-  const el = document.getElementById("home-greeting");
-  if (!el) return;
-  const sp = getCurrentSalesperson();
-  el.textContent = sp ? `Hi, ${sp} 👋` : "Hi 👋";
-}
-
-// ───────────────────────────────────────────────────────────
-// DEV affordance — visible "Sign out" button on home screen.
-// TODO: remove this and the dev-footer in index.html before public launch.
+// DEV: visible Sign out button on the home screen.
+// TODO: remove before public launch (see DEV-AFFORDANCES.md)
 // ───────────────────────────────────────────────────────────
 function attachSignoutButton() {
   const btn = document.getElementById("signout-btn");
   if (!btn) return;
   btn.addEventListener("click", () => {
     clearCurrentSalesperson();
+    session.reset();
     location.reload();
   });
 }
@@ -92,8 +106,17 @@ function attachSignoutButton() {
 // Boot
 // ───────────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
-  renderSigninPicker();
-  renderHomeGreeting();
+  // One-time wiring (event listeners that don't change between renders)
+  attachSigninHandlers(showScreen);
+  attachHomeHandlers(showScreen, session);
+  attachCustomerHandlers(showScreen, session);
+  attachCameraHandlers(showScreen, session);
+  attachReviewHandlers(showScreen, session);
+  attachUploadHandlers(showScreen, session);
+  attachDoneHandlers(showScreen, session);
+  attachBackButtons();
   attachSignoutButton();
+
+  // Route to initial screen
   showScreen(isSignedIn() ? "home" : "signin");
 });

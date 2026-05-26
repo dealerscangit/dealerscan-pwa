@@ -76,17 +76,31 @@ remove or gate behind the same debug flag as `window.DS` before launch.
 
 ---
 
-### 🔴 Scaffolding note on home screen
+### 🔴 Camera screen stub (`scripts/screens/camera.js`)
 
-The dashed-border box on the home screen that says "Sign-in working. Next:
-home screen with 'New Scan' button and recent activity." Pure placeholder
-content. Gets replaced when we build the real home screen.
+Entire `camera.js` is a stub. Instead of opening the device camera, it shows
+a "Camera coming soon" message and a button that simulates capturing 3 photos
+(SVG data URLs with "Doc 1/2/3" labels on dark backgrounds). Lets the
+flow review → upload → done be tested end-to-end without real camera code.
+
+**Why dev-only:** real camera using `getUserMedia` + canvas (+ optional
+jscanify for edge detection) is the biggest design decision left and was
+deferred to a session where Brandon is present.
 
 **File / location:**
-- `index.html` — `<div class="scaffold-note">...</div>` inside the home
-  screen section. Delete the entire div.
-- `styles/main.css` — the `.scaffold-note` rule block. Can stay if we want to
-  reuse the style elsewhere, or delete when no longer used.
+- `scripts/screens/camera.js` — entire file gets replaced
+- `index.html` — the `<section data-screen="camera">` body has `.camera-stub`
+  content that gets replaced with viewfinder + capture button
+- `styles/main.css` — `.camera-stub` and `.camera-stub-icon` / `.camera-stub h2`
+  rules can be deleted once real camera UI lands
+
+**Removal test:** tapping "New Scan" → picking customer → reaches a real
+camera viewfinder, not a stub screen.
+
+### ~~🔴 Scaffolding note on home screen~~ (removed 2026-05-26)
+
+Previously a dashed-border placeholder. Now replaced by the real "New Scan"
+primary card and recent customers list.
 
 ---
 
@@ -114,9 +128,12 @@ hashes the file content. Not urgent.
 - [ ] Delete `attachSignoutButton()` function from `scripts/app.js`
 - [ ] Delete `attachSignoutButton();` call from `DOMContentLoaded` in
       `scripts/app.js`
+- [ ] Replace `scripts/screens/camera.js` with the real camera implementation
+- [ ] Replace `<section data-screen="camera">` body in `index.html` with the
+      real camera UI (viewfinder, capture button, thumbnail strip)
+- [ ] Delete `.camera-stub*` rule blocks from `styles/main.css`
 - [ ] Gate or remove `window.DS` debug helper in `scripts/app.js`
 - [ ] Gate or remove `console.log` boot message in `scripts/app.js`
-- [ ] Replace `<div class="scaffold-note">` with real home-screen content
 - [ ] Bump `?v=N` cache-bust version one last time so the cleaned-up code
       actually loads on existing devices
 
