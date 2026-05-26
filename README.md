@@ -98,3 +98,43 @@ All hit the existing Apps Script Web App at the URL in `scripts/apiClient.js`:
 **v2 — Google Sign-In**
 - Replace name picker with OAuth
 - Salesperson list managed via backend
+
+
+## What the PWA is (and isn't)
+
+The PWA is a **capture tool**. It exists to let salespeople photograph
+physical documents and get them into Drive without friction. Five-tap
+flow: sign in → new scan → customer → capture → upload → done.
+
+The PWA is NOT:
+- A folder browser. Salespeople don't browse Drive on a phone. They
+  browse from the extension (at their desk) or from the Drive app
+  directly.
+- A file manager. No rename, no move, no delete-from-Drive.
+- A way to send documents to Tekion. That's the extension's job.
+- A general-purpose Drive client.
+
+The PWA only ever **writes** to Drive. It never displays existing
+folder contents. The closest it comes is the recent customers list
+(getHistory endpoint), which is just a list of customer names to make
+"second photo for an existing customer" easy — no folder browsing.
+
+## The two-client architecture
+
+Chrome extension + PWA are two independent clients of the same Apps
+Script backend. They don't talk to each other, they both talk to Drive
+through the backend. Customer folders created by the PWA are visible
+to the extension and vice versa, because the backend is one source of
+truth.
+
+```
+[PWA on phone] ─────┐
+                    ├──→ [Apps Script backend] ──→ [Drive: dealerscan-prod]
+[Chrome extension] ─┘                                       │
+                                                            ↓
+                                                       [Tekion uploads via extension]
+```
+
+This separation is intentional and load-bearing — please don't add
+folder-browsing features to the PWA. If a feature needs Drive browsing,
+it belongs in the extension.
