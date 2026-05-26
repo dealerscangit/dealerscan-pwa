@@ -76,7 +76,7 @@ body::before {
 }
 main {
   flex: 1; display: flex; flex-direction: column;
-  padding: 1.25rem 1rem 1rem; min-height: 0;
+  padding: 1.5rem 1.25rem 1.25rem; min-height: 0;
 }
 
 /* ────────────────────────────────────────
@@ -84,7 +84,7 @@ main {
    ──────────────────────────────────────── */
 [data-screen] {
   display: flex; flex-direction: column;
-  flex: 1; min-height: 0; gap: 1rem;
+  flex: 1; min-height: 0; gap: 1.25rem;
   animation: screenFadeIn 0.22s ease-out;
 }
 [data-screen][hidden] { display: none; }
@@ -94,11 +94,11 @@ main {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin: 0; color: var(--text); }
-h2 { font-size: 11px; font-weight: 600; margin: 0; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.7px; }
+h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; margin: 0; color: var(--text); }
+h2 { font-size: 12px; font-weight: 600; margin: 0; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
 .muted { color: var(--text-dim); }
 .dim   { color: var(--text-faint); }
-.small { font-size: 12px; }
+.small { font-size: 13px; }
 
 /* ────────────────────────────────────────
    Inputs (16px min font-size — kills iOS zoom)
@@ -109,9 +109,9 @@ input[type="text"], input[type="search"] {
   background: var(--surface-strong);
   color: var(--text);
   border-radius: var(--radius-md);
-  padding: 13px 14px;
+  padding: 16px 16px;
   outline: none;
-  font-size: 16px;
+  font-size: 17px;
   -webkit-appearance: none; appearance: none;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -121,29 +121,27 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 /* ────────────────────────────────────────
    Shared header + buttons
    ──────────────────────────────────────── */
-.screen-header { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.screen-header { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .screen-header h1 { flex: 1; }
 .icon-button {
   background: var(--surface-strong);
   border: 0.5px solid var(--border);
   border-radius: 50%;
-  width: 36px; height: 36px;
+  width: 42px; height: 42px;
   display: flex; align-items: center; justify-content: center;
   color: var(--text-muted); cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   padding: 0;
   transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
 }
 .icon-button:active { background: var(--surface-active); color: var(--text); transform: scale(0.94); }
 
-/* Two-tone primary buttons:
-   .primary-button       = pink (destructive: upload, save)
-   .accent-button        = blue (navigational primary: New Scan card)
-   .secondary-button     = ghost (cancel, back, less-important) */
+/* Two-tone primary buttons */
 .primary-button, .accent-button, .secondary-button {
-  font: inherit; font-weight: 600; font-size: 15px;
+  font: inherit; font-weight: 600; font-size: 16px;
   border-radius: var(--radius-md);
-  padding: 14px 16px; width: 100%;
+  padding: 17px 18px; width: 100%;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   border: 0.5px solid transparent;
   transition: transform 0.1s ease, box-shadow 0.2s ease, background 0.15s ease, filter 0.2s ease;
@@ -178,25 +176,26 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 /* ────────────────────────────────────────
    Sign-in screen — picker
    ──────────────────────────────────────── */
-.signin-header { padding: 0.25rem 0 0.5rem; flex-shrink: 0; }
-.signin-header h1 { margin-bottom: 4px; }
-.signin-header p  { margin: 0; font-size: 13px; color: var(--text-dim); }
+.signin-header { padding: 0.5rem 0 0.75rem; flex-shrink: 0; }
+.signin-header h1 { margin-bottom: 6px; }
+.signin-header p  { margin: 0; font-size: 15px; color: var(--text-dim); }
 .picker-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
   overflow-y: auto; -webkit-overflow-scrolling: touch;
   padding-bottom: 0.5rem;
 }
 .picker-tile {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px;
+  gap: 10px;
   background: var(--surface);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 14px 6px;
+  padding: 20px 8px;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   font-family: inherit; color: var(--text);
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   animation: tileFadeIn 0.35s ease-out backwards;
+  min-height: 96px;
 }
 .picker-tile:hover  { background: var(--surface-hover); }
 .picker-tile:active { transform: scale(0.95); background: var(--surface-active); border-color: var(--border-strong); }
@@ -211,32 +210,33 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 .picker-tile:nth-child(3n+3) { animation-delay: 60ms; }
 
 .picker-tile-initial {
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 46px; height: 46px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--accent-grad);
-  color: #fff; font-weight: 600; font-size: 14px;
+  color: #fff; font-weight: 600; font-size: 18px;
 }
-.picker-tile-name { font-size: 12px; font-weight: 500; text-align: center; line-height: 1.2; }
+.picker-tile-name { font-size: 13px; font-weight: 500; text-align: center; line-height: 1.2; }
 
 /* ────────────────────────────────────────
    Home screen
    ──────────────────────────────────────── */
-.home-header { padding: 0.25rem 0; flex-shrink: 0; }
-.home-header p { margin: 4px 0 0 0; font-size: 13px; }
-.home-greeting { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; margin: 0; color: var(--text); }
+.home-header { padding: 0.25rem 0 0; flex-shrink: 0; }
+.home-header p { margin: 6px 0 0 0; font-size: 15px; }
+.home-greeting { font-size: 34px; font-weight: 700; letter-spacing: -0.7px; margin: 0; color: var(--text); }
 
 .primary-card {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
   background: var(--accent-grad);
   border: 0.5px solid rgba(255,255,255,0.18);
   border-radius: var(--radius-xl);
-  padding: 22px 20px 26px;
+  padding: 30px 26px 32px;
   color: #fff; font: inherit; text-align: left;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   width: 100%; flex-shrink: 0;
   position: relative; overflow: hidden;
   transition: transform 0.12s ease, box-shadow 0.2s ease;
   box-shadow: 0 6px 24px rgba(66, 133, 244, 0.3);
+  min-height: 160px;
 }
 .primary-card:active { transform: scale(0.985); box-shadow: 0 3px 12px rgba(66, 133, 244, 0.3); }
 .primary-card::after {
@@ -246,28 +246,29 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
   pointer-events: none;
 }
 .primary-card-icon {
-  display: inline-flex; width: 44px; height: 44px;
+  display: inline-flex; width: 56px; height: 56px;
   border-radius: var(--radius-md);
   background: rgba(255,255,255,0.18);
   align-items: center; justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
-.primary-card-label { font-size: 20px; font-weight: 600; letter-spacing: -0.2px; }
-.primary-card-sub   { font-size: 13px; color: rgba(255,255,255,0.85); }
+.primary-card-icon svg { width: 36px; height: 36px; }
+.primary-card-label { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
+.primary-card-sub   { font-size: 14px; color: rgba(255,255,255,0.85); margin-top: 2px; }
 
-.recent-section { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+.recent-section { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1; }
 .section-header { display: flex; align-items: baseline; justify-content: space-between; }
 
 .recent-list {
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 8px;
   overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 .recent-item {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 14px;
   background: var(--surface);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  padding: 16px 16px;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   font: inherit; color: var(--text); text-align: left;
   width: 100%;
@@ -286,23 +287,25 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 }
 
 .recent-item-icon {
-  width: 32px; height: 32px; border-radius: 50%;
+  width: 40px; height: 40px; border-radius: 50%;
   background: var(--accent-grad);
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 600; color: #fff;
+  font-size: 15px; font-weight: 600; color: #fff;
   flex-shrink: 0;
 }
 .recent-item-name {
-  flex: 1; font-size: 14px; font-weight: 500;
+  flex: 1; font-size: 16px; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .recent-item-chev { color: var(--text-faint); flex-shrink: 0; }
+.recent-item-chev svg { width: 20px; height: 20px; }
 
 .recent-empty {
-  padding: 18px 14px; text-align: center;
+  padding: 28px 18px; text-align: center;
   background: var(--surface);
   border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
 }
 
 /* ────────────────────────────────────────
@@ -319,7 +322,7 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
   border: 0.5px solid var(--border);
 }
 .skeleton-row {
-  height: 56px;
+  height: 72px;
 }
 @keyframes skeletonShimmer {
   0%   { background-position: -100% 0; }
@@ -335,13 +338,13 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 }
 
 .inline-new-cta {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 12px;
   background: var(--primary-grad);
   color: #fff;
   border: 0.5px solid rgba(255,255,255,0.18);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
-  font: inherit; font-weight: 600; font-size: 14px;
+  padding: 16px 16px;
+  font: inherit; font-weight: 600; font-size: 15px;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   text-align: left; width: 100%;
   box-shadow: 0 4px 14px var(--primary-glow);
@@ -350,10 +353,10 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 }
 .inline-new-cta:active { transform: scale(0.985); box-shadow: 0 2px 8px var(--primary-glow); }
 .inline-new-cta-plus {
-  width: 24px; height: 24px; border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   background: rgba(255,255,255,0.22);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700; line-height: 1;
+  font-size: 18px; font-weight: 700; line-height: 1;
   flex-shrink: 0;
 }
 .inline-new-cta-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -420,39 +423,157 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 .review-thumb-delete:active { background: var(--primary); }
 
 /* ────────────────────────────────────────
-   Upload
+   Upload — card grid w/ live thumbnails + per-card status overlay
    ──────────────────────────────────────── */
-.upload-list {
-  list-style: none; padding: 0; margin: 0;
-  display: flex; flex-direction: column; gap: 6px;
-  overflow-y: auto; flex: 1;
+
+.upload-meta {
+  display: flex; flex-direction: column; gap: 8px;
+  flex-shrink: 0;
 }
-.upload-item {
-  display: flex; align-items: center; gap: 12px;
+.upload-progress-wrap {
+  width: 100%; height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.upload-progress-bar {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--primary), #ff6b85);
+  border-radius: 99px;
+  transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.upload-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1; align-content: start;
+  padding-bottom: 0.5rem;
+}
+
+.upload-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
   background: var(--surface);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 12px 14px; font-size: 13px;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+  transition: border-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease, filter 0.3s ease;
+  animation: thumbPop 0.25s ease-out backwards;
 }
-.upload-item.active { background: var(--surface-hover); border-color: var(--border-strong); }
-.upload-item.success { border-color: rgba(52, 211, 153, 0.35); }
-.upload-item.failed  { border-color: rgba(248, 113, 113, 0.4); }
-.upload-item-name { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.upload-item-status {
-  font-size: 18px;
+.upload-card:nth-child(1) { animation-delay: 0ms; }
+.upload-card:nth-child(2) { animation-delay: 40ms; }
+.upload-card:nth-child(3) { animation-delay: 80ms; }
+.upload-card:nth-child(4) { animation-delay: 120ms; }
+.upload-card:nth-child(5) { animation-delay: 160ms; }
+.upload-card:nth-child(6) { animation-delay: 200ms; }
+
+.upload-card img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The overlay sits on top of the thumb. Background dim varies by status:
+   pending = dim almost completely (waiting in queue)
+   active  = lighter dim + active glow (this one's uploading right now)
+   success = fully reveal the thumb (we're done, it's beautiful, look at it)
+   failed  = red wash, you need to see this */
+.upload-card-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  transition: background 0.35s ease, color 0.25s ease;
+}
+.upload-card-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 0.5px solid rgba(255,255,255,0.2);
+  transition: background 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.upload-item.pending  .upload-item-status::after { content: '○'; color: var(--text-faint); font-size: 16px; }
-.upload-item.active   .upload-item-status::after { content: ''; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin 0.8s linear infinite; }
-.upload-item.success  .upload-item-status::after { content: '✓'; color: var(--success); font-weight: 700; animation: checkPop 0.3s ease-out; }
-.upload-item.failed   .upload-item-status::after { content: '✕'; color: var(--danger);  font-weight: 700; }
+.upload-card-label {
+  font-size: 11px; font-weight: 500;
+  max-width: 90%;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+.upload-card.pending {
+  filter: saturate(0.6) brightness(0.85);
+}
+.upload-card.pending .upload-card-overlay { background: rgba(0, 0, 0, 0.65); }
+.upload-card.pending .upload-card-icon { color: rgba(255,255,255,0.55); }
+
+.upload-card.active {
+  border-color: rgba(66, 133, 244, 0.6);
+  box-shadow: 0 0 0 1px rgba(66, 133, 244, 0.35), 0 4px 20px rgba(66, 133, 244, 0.35);
+}
+.upload-card.active .upload-card-overlay { background: rgba(20, 50, 110, 0.45); }
+.upload-card.active .upload-card-icon {
+  background: var(--accent-grad);
+  border-color: rgba(255,255,255,0.35);
+}
+
+.upload-card-spinner {
+  width: 20px; height: 20px;
+  border: 2.5px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes checkPop {
-  0%   { transform: scale(0.6); opacity: 0; }
-  60%  { transform: scale(1.15); }
+
+.upload-card.success {
+  border-color: rgba(52, 211, 153, 0.4);
+  filter: none;
+}
+.upload-card.success .upload-card-overlay {
+  /* Mostly transparent so the thumb shows through clearly. Tiny dark gradient
+     at the bottom keeps the filename readable. */
+  background: linear-gradient(to top,
+    rgba(0,0,0,0.55) 0%,
+    rgba(0,0,0,0.15) 35%,
+    rgba(0,0,0,0) 60%);
+  justify-content: space-between;
+  padding: 10px;
+}
+.upload-card.success .upload-card-icon {
+  background: var(--success);
+  border-color: rgba(255,255,255,0.4);
+  color: #06381f;
+  transform: scale(1) translateZ(0);
+  animation: checkPopBig 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-top: 4px;
+  margin-left: auto;
+  /* Small badge in top-right instead of center */
+  width: 32px; height: 32px;
+  align-self: flex-end;
+}
+.upload-card.success .upload-card-label {
+  opacity: 0.95;
+  font-weight: 600;
+}
+
+@keyframes checkPopBig {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.18); }
   100% { transform: scale(1); opacity: 1; }
+}
+
+.upload-card.failed {
+  border-color: rgba(248, 113, 113, 0.5);
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.25);
+}
+.upload-card.failed .upload-card-overlay { background: rgba(110, 30, 30, 0.55); }
+.upload-card.failed .upload-card-icon {
+  background: var(--danger);
+  border-color: rgba(255,255,255,0.35);
+  color: #3a0e0e;
 }
 
 /* ────────────────────────────────────────
@@ -463,13 +584,14 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
   gap: 14px; flex: 1; text-align: center;
 }
 .done-check {
-  width: 92px; height: 92px; border-radius: 50%;
+  width: 108px; height: 108px; border-radius: 50%;
   background: var(--success);
   display: flex; align-items: center; justify-content: center;
-  color: #06381f; margin-bottom: 8px;
+  color: #06381f; margin-bottom: 12px;
   box-shadow: 0 8px 32px rgba(52, 211, 153, 0.4);
   animation: doneCheckPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+.done-check svg { width: 64px; height: 64px; }
 @keyframes doneCheckPop {
   0%   { transform: scale(0.3); opacity: 0; }
   60%  { transform: scale(1.08); }

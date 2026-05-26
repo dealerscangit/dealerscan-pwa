@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=9" />
 
-  <link rel="stylesheet" href="styles/main.css?v=11" />
+  <link rel="stylesheet" href="styles/main.css?v=12" />
 </head>
 <body>
   <main>
@@ -147,15 +147,21 @@
     </section>
 
     <!-- ─────────────────────────────────────────────
-         SCREEN 6: upload progress
+         SCREEN 6: upload progress (card grid w/ live thumbs)
          ───────────────────────────────────────────── -->
     <section data-screen="upload" hidden>
       <header class="screen-header">
-        <h1>Uploading…</h1>
+        <h1>Uploading</h1>
       </header>
 
-      <p class="muted small" id="upload-summary"></p>
-      <ul class="upload-list" id="upload-list"></ul>
+      <div class="upload-meta">
+        <div class="upload-progress-wrap">
+          <div class="upload-progress-bar" id="upload-progress-bar"></div>
+        </div>
+        <p class="muted small" id="upload-summary">Preparing…</p>
+      </div>
+
+      <div class="upload-grid" id="upload-grid"></div>
     </section>
 
     <!-- ─────────────────────────────────────────────
@@ -178,6 +184,6 @@
 
   </main>
 
-  <script type="module" src="scripts/app.js?v=11"></script>
+  <script type="module" src="scripts/app.js?v=12"></script>
 </body>
 </html>
