@@ -87,9 +87,12 @@ input[type="text"], input[type="search"] {
   background: var(--surface);
   color: var(--text);
   border-radius: var(--radius-md);
-  padding: 11px 14px;
+  padding: 12px 14px;
   outline: none;
-  font-size: 14px;
+  /* MUST be >= 16px to prevent iOS Safari's auto-zoom on focus.
+     Without this, the screen zooms in when the salesperson taps an input,
+     breaking the native-app feel. */
+  font-size: 16px;
   -webkit-appearance: none; appearance: none;
 }
 input::placeholder { color: var(--text-faint); }
