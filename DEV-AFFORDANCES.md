@@ -76,26 +76,12 @@ remove or gate behind the same debug flag as `window.DS` before launch.
 
 ---
 
-### 🔴 Camera screen stub (`scripts/screens/camera.js`)
+### ~~🔴 Camera screen stub~~ (removed 2026-05-26)
 
-Entire `camera.js` is a stub. Instead of opening the device camera, it shows
-a "Camera coming soon" message and a button that simulates capturing 3 photos
-(SVG data URLs with "Doc 1/2/3" labels on dark backgrounds). Lets the
-flow review → upload → done be tested end-to-end without real camera code.
-
-**Why dev-only:** real camera using `getUserMedia` + canvas (+ optional
-jscanify for edge detection) is the biggest design decision left and was
-deferred to a session where Brandon is present.
-
-**File / location:**
-- `scripts/screens/camera.js` — entire file gets replaced
-- `index.html` — the `<section data-screen="camera">` body has `.camera-stub`
-  content that gets replaced with viewfinder + capture button
-- `styles/main.css` — `.camera-stub` and `.camera-stub-icon` / `.camera-stub h2`
-  rules can be deleted once real camera UI lands
-
-**Removal test:** tapping "New Scan" → picking customer → reaches a real
-camera viewfinder, not a stub screen.
+Replaced with the real getUserMedia-based camera implementation. The
+`.camera-stub*` CSS rules are gone. The `<section data-screen="camera">`
+body now has a full-bleed viewfinder, big shutter, Done chip, thumb peek,
+and a permission-denied fallback panel with file picker.
 
 ### ~~🔴 Scaffolding note on home screen~~ (removed 2026-05-26)
 
@@ -128,10 +114,6 @@ hashes the file content. Not urgent.
 - [ ] Delete `attachSignoutButton()` function from `scripts/app.js`
 - [ ] Delete `attachSignoutButton();` call from `DOMContentLoaded` in
       `scripts/app.js`
-- [ ] Replace `scripts/screens/camera.js` with the real camera implementation
-- [ ] Replace `<section data-screen="camera">` body in `index.html` with the
-      real camera UI (viewfinder, capture button, thumbnail strip)
-- [ ] Delete `.camera-stub*` rule blocks from `styles/main.css`
 - [ ] Gate or remove `window.DS` debug helper in `scripts/app.js`
 - [ ] Gate or remove `console.log` boot message in `scripts/app.js`
 - [ ] Bump `?v=N` cache-bust version one last time so the cleaned-up code

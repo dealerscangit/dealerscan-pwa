@@ -68,6 +68,17 @@ const SCREEN_RENDERERS = {
 };
 
 export function showScreen(id) {
+  // If we're navigating AWAY from the camera, ensure its stream is stopped.
+  // The camera module owns its own lifecycle but the universal router is the
+  // only place that catches every exit path (back button, programmatic, etc).
+  const camWasOpen = !document.querySelector('[data-screen="camera"]').hidden;
+  if (camWasOpen && id !== "camera") {
+    // Dynamic import to avoid a circular dep if camera ever imports app.js.
+    import("./screens/camera.js").then((mod) => {
+      if (typeof mod._teardown === "function") mod._teardown();
+    }).catch(() => {});
+  }
+
   document.querySelectorAll("[data-screen]").forEach((el) => {
     el.hidden = el.dataset.screen !== id;
   });

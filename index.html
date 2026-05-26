@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=9" />
 
-  <link rel="stylesheet" href="styles/main.css?v=13" />
+  <link rel="stylesheet" href="styles/main.css?v=14" />
 </head>
 <body>
   <main>
@@ -104,24 +104,64 @@
     </section>
 
     <!-- ─────────────────────────────────────────────
-         SCREEN 4: camera (STUB — fake capture)
+         SCREEN 4: camera (real getUserMedia capture)
+         Full-bleed viewfinder, big shutter, Done button, thumbnail
+         peek of the most recent capture in the bottom-left.
          ───────────────────────────────────────────── -->
     <section data-screen="camera" hidden>
-      <header class="screen-header">
-        <button class="icon-button" data-back="customer" type="button" aria-label="Back">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <h1>Scan</h1>
-      </header>
+      <div class="camera-stage" id="camera-stage">
 
-      <div class="camera-stub">
-        <div class="camera-stub-icon" aria-hidden="true">📷</div>
-        <h2>Camera coming soon</h2>
-        <p class="muted">This is a stub for testing the flow.</p>
-        <p class="dim small" id="camera-customer-label"></p>
-        <button class="primary-button" id="btn-fake-capture" type="button">
-          Simulate 3 photos
-        </button>
+        <!-- Live video viewfinder (full-bleed) -->
+        <video id="camera-video" class="camera-video" playsinline autoplay muted></video>
+
+        <!-- Capture canvas — offscreen, used to grab frames from <video> -->
+        <canvas id="camera-canvas" hidden></canvas>
+
+        <!-- Shutter flash overlay — fades white briefly on capture -->
+        <div class="camera-flash" id="camera-flash" aria-hidden="true"></div>
+
+        <!-- Top chrome: back + Done -->
+        <div class="camera-top">
+          <button class="icon-button camera-chrome-btn" data-back="customer" type="button" aria-label="Cancel and go back">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div class="camera-customer-chip" id="camera-customer-chip"></div>
+          <button class="camera-done-btn" id="btn-camera-done" type="button" disabled>
+            <span id="camera-done-label">Done</span>
+          </button>
+        </div>
+
+        <!-- Bottom chrome: thumbnail peek + shutter + count -->
+        <div class="camera-bottom">
+          <button class="camera-thumb-peek" id="camera-thumb-peek" type="button" hidden aria-label="Review captured photos">
+            <img id="camera-thumb-peek-img" alt="" />
+            <span class="camera-thumb-peek-count" id="camera-thumb-peek-count">0</span>
+          </button>
+
+          <button class="camera-shutter" id="btn-shutter" type="button" aria-label="Capture photo">
+            <span class="camera-shutter-ring"></span>
+            <span class="camera-shutter-core"></span>
+          </button>
+
+          <div class="camera-bottom-right-spacer" aria-hidden="true"></div>
+        </div>
+
+        <!-- Permission denied / no camera fallback -->
+        <div class="camera-fallback" id="camera-fallback" hidden>
+          <div class="camera-fallback-icon" aria-hidden="true">📷</div>
+          <h2>Camera unavailable</h2>
+          <p class="muted" id="camera-fallback-msg">
+            We couldn't open the camera. You can pick photos from your library instead.
+          </p>
+          <label class="primary-button camera-fallback-picker">
+            Pick from library
+            <input id="camera-file-fallback" type="file" accept="image/*" multiple hidden />
+          </label>
+          <button class="secondary-button" id="btn-camera-fallback-retry" type="button" style="margin-top: 8px;">
+            Try camera again
+          </button>
+        </div>
+
       </div>
     </section>
 
@@ -182,6 +222,6 @@
 
   </main>
 
-  <script type="module" src="scripts/app.js?v=13"></script>
+  <script type="module" src="scripts/app.js?v=14"></script>
 </body>
 </html>
