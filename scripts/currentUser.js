@@ -8,13 +8,31 @@
 
 const STORAGE_KEY = "dealerscan.salesperson";
 
-// TODO(brandon): replace with real team roster.
-// This list controls who can sign in to the app in v1.
-// Anyone NOT in this list cannot use the app (we hide the entry point).
+// Team roster — controls who can sign in to the app in v1.
+// Anyone NOT in this list cannot use the app.
+// Sorted alphabetically for the picker; tweak display names here anytime.
+// When we move to Google Sign-In (v2), this list is replaced by the backend
+// users data bank — the picker UI goes away entirely.
 export const SALESPEOPLE = [
-  // "Brandon Busler",
-  // "Salesperson Two",
-  // "Salesperson Three",
+  "Brandon",
+  "Bryant",
+  "Cheyne",
+  "Chris",
+  "Eric",
+  "Frank",
+  "Jake",
+  "Kaufee",
+  "Keith",
+  "Kyle",
+  "Kyle G.",
+  "Maria",
+  "Michael",
+  "Neil",
+  "Rashon",
+  "Raymond",
+  "Ryan",
+  "Will",
+  "Yusuf",
 ];
 
 /**
