@@ -189,3 +189,30 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
   line-height: 1.5;
   color: var(--text-muted);
 }
+
+/* ────────────────────────────────────────
+   DEV-ONLY footer (sign-out link)
+   Remove this section before public launch.
+   ──────────────────────────────────────── */
+
+.dev-footer {
+  margin-top: auto;
+  padding: 1rem 0 0.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.text-link {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--text-faint);
+  text-underline-offset: 3px;
+  -webkit-tap-highlight-color: transparent;
+}
+.text-link:active { color: var(--text); }

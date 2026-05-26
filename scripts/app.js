@@ -21,7 +21,6 @@ window.DS = {
 };
 
 console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() || "(none)");
-console.log("[DealerScan PWA] DEV: long-press the greeting on the home screen to reset sign-in.");
 
 // ───────────────────────────────────────────────────────────
 // Screen routing
@@ -77,44 +76,16 @@ function renderHomeGreeting() {
 }
 
 // ───────────────────────────────────────────────────────────
-// DEV affordance — long-press the greeting to reset sign-in.
-// TODO: remove before public launch (or gate behind a debug flag).
+// DEV affordance — visible "Sign out" button on home screen.
+// TODO: remove this and the dev-footer in index.html before public launch.
 // ───────────────────────────────────────────────────────────
-function attachDevResetGesture() {
-  const greeting = document.getElementById("home-greeting");
-  if (!greeting) return;
-
-  const HOLD_MS = 1000;
-  let pressTimer = null;
-
-  function startPress() {
-    greeting.style.transition = `opacity ${HOLD_MS}ms linear`;
-    greeting.style.opacity = "0.35";
-    pressTimer = setTimeout(() => {
-      clearCurrentSalesperson();
-      location.reload();
-    }, HOLD_MS);
-  }
-
-  function cancelPress() {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-    greeting.style.transition = "opacity 0.15s ease";
-    greeting.style.opacity = "";
-  }
-
-  // Touch (mobile)
-  greeting.addEventListener("touchstart", startPress, { passive: true });
-  greeting.addEventListener("touchend",   cancelPress);
-  greeting.addEventListener("touchcancel",cancelPress);
-  greeting.addEventListener("touchmove",  cancelPress);
-
-  // Mouse (desktop dev)
-  greeting.addEventListener("mousedown",  startPress);
-  greeting.addEventListener("mouseup",    cancelPress);
-  greeting.addEventListener("mouseleave", cancelPress);
+function attachSignoutButton() {
+  const btn = document.getElementById("signout-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    clearCurrentSalesperson();
+    location.reload();
+  });
 }
 
 // ───────────────────────────────────────────────────────────
@@ -123,6 +94,6 @@ function attachDevResetGesture() {
 window.addEventListener("DOMContentLoaded", () => {
   renderSigninPicker();
   renderHomeGreeting();
-  attachDevResetGesture();
+  attachSignoutButton();
   showScreen(isSignedIn() ? "home" : "signin");
 });

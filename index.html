@@ -15,7 +15,8 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
 
-  <link rel="stylesheet" href="styles/main.css" />
+  <!-- Cache-busting query string. Bump the v= each visual change to force phones to fetch the new CSS. -->
+  <link rel="stylesheet" href="styles/main.css?v=4" />
 </head>
 <body>
   <main>
@@ -35,12 +36,15 @@
       <h1 class="home-greeting" id="home-greeting">Hi 👋</h1>
       <div class="scaffold-note">
         Sign-in working. Next: home screen with "New Scan" button and recent activity.
-        <br><br>
-        <span style="opacity: 0.7;">Dev tip: long-press the greeting above to reset sign-in.</span>
       </div>
+
+      <!-- DEV-ONLY footer. Remove before public launch. -->
+      <footer class="dev-footer">
+        <button id="signout-btn" class="text-link" type="button">Sign out</button>
+      </footer>
     </section>
   </main>
 
-  <script type="module" src="scripts/app.js"></script>
+  <script type="module" src="scripts/app.js?v=4"></script>
 </body>
 </html>
