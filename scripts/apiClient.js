@@ -7,7 +7,6 @@ const APPS_SCRIPT_URL =
 
 /**
  * Create (or get existing) customer folder for today.
- * Mirrors the Siri Shortcut's first backend call.
  * @returns {Promise<string>} Drive folder ID
  */
 export async function createCustomerFolder(customerName, salesName, isNew) {
@@ -58,4 +57,43 @@ export async function getCustomerHistory(salesName) {
   if (!res.ok) throw new Error(`getHistory HTTP ${res.status}`);
   const txt = (await res.text()).trim();
   return txt.split("\n").map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * Remove a customer from a salesperson's history list.
+ * Server-side: rewrites the salesperson's row in CustomerHistory with the
+ * customer filtered out. Drive folders and scan logs are NOT touched.
+ * Idempotent: removing a customer that isn't there is a successful no-op.
+ *
+ * Requires the Apps Script deployment to include the `hideCustomer` action.
+ * If the action isn't deployed yet, this call fails with a non-OK response —
+ * caller should treat that gracefully (UI can still optimistically hide).
+ */
+export async function hideCustomer(salesName, customerName) {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "hideCustomer");
+  url.searchParams.set("salesName", salesName);
+  url.searchParams.set("customerName", customerName);
+  const res = await fetch(url.toString(), { method: "GET" });
+  if (!res.ok) throw new Error(`hideCustomer HTTP ${res.status}`);
+  const txt = (await res.text()).trim();
+  if (!txt.startsWith("OK")) throw new Error(`hideCustomer backend: ${txt}`);
+  return txt;
+}
+
+/**
+ * Re-add a customer to the front of a salesperson's history list.
+ * Used by the undo-toast after swipe-remove. Server-side reuses
+ * saveToHistory() which de-dupes and bumps-to-front.
+ */
+export async function unhideCustomer(salesName, customerName) {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "unhideCustomer");
+  url.searchParams.set("salesName", salesName);
+  url.searchParams.set("customerName", customerName);
+  const res = await fetch(url.toString(), { method: "GET" });
+  if (!res.ok) throw new Error(`unhideCustomer HTTP ${res.status}`);
+  const txt = (await res.text()).trim();
+  if (!txt.startsWith("OK")) throw new Error(`unhideCustomer backend: ${txt}`);
+  return txt;
 }

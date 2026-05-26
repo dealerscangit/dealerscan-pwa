@@ -940,3 +940,121 @@ main:has([data-screen="camera"]:not([hidden])) {
   -webkit-tap-highlight-color: transparent;
 }
 .text-link:active { color: var(--text-dim); }
+
+/* ────────────────────────────────────────
+   Swipe-to-reveal actions (iOS Mail style)
+   ──────────────────────────────────────── */
+
+.swipe-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  /* Same border-radius as a .recent-item so the wrap doesn't introduce
+     visible corners around the row. Customer screen rows use radius-lg
+     so we override per-context below. */
+}
+[data-screen="customer"] .swipe-wrap { border-radius: var(--radius-lg); }
+
+/* Action layer sits BEHIND the row, revealed when the row slides left. */
+.swipe-actions {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  pointer-events: none; /* enabled when the row is open */
+  z-index: 1;
+}
+.swipe-wrap.swipe-open .swipe-actions {
+  pointer-events: auto;
+}
+
+.swipe-action {
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  padding: 0 22px;
+  min-width: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  color: #fff;
+}
+.swipe-action.destructive {
+  background: var(--primary-grad);
+}
+.swipe-action.destructive:active {
+  filter: brightness(0.9);
+}
+.swipe-action.neutral {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* The foreground holds the actual row and slides left to reveal actions */
+.swipe-foreground {
+  position: relative;
+  z-index: 2;
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  /* The .recent-item inside is already styled — we just let it size the
+     foreground naturally. */
+}
+
+/* When inside a swipe-wrap, a recent-item's border-radius is no longer needed
+   on the corners that touch the wrap edges. But since the wrap is overflow:hidden
+   the corners get clipped anyway; leaving the row's radius for when it's not
+   wrapped (skeleton/empty states) is fine. */
+
+/* ────────────────────────────────────────
+   Toast (bottom-of-screen notification w/ optional action)
+   ──────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(20, 30, 50, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px 14px 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 240px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 1000;
+  pointer-events: auto;
+}
+.toast.toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.toast-action {
+  background: transparent;
+  border: none;
+  color: var(--accent-soft);
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 4px 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.toast-action:active { opacity: 0.7; }

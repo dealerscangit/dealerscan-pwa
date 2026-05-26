@@ -1,9 +1,10 @@
 // scripts/screens/customer.js
-// Screen 3: customer picker — text input + history list + "+ New" sticky CTA.
+// Screen 3: customer picker — text input + history list + inline "+ New" CTA.
 
 import { getCurrentSalesperson } from "../currentUser.js";
-import { getCustomerHistory } from "../apiClient.js";
-import { getCachedHistory } from "./home.js";
+import { getCustomerHistory, hideCustomer, unhideCustomer } from "../apiClient.js";
+import { getCachedHistory, invalidateHistoryCache } from "./home.js";
+import { makeSwipeable, showToast } from "../swipeActions.js";
 
 let _showScreen = null;
 let _session = null;
@@ -21,9 +22,6 @@ export function attachCustomerHandlers(showScreen, session) {
     input.addEventListener("input", () => {
       const q = input.value.trim();
       filterAndPaint(q);
-      // Show the inline "+ Use as new customer" CTA only when typed text
-      // doesn't match an existing customer. Echo the typed value back so
-      // the user sees exactly what name will be created.
       const matchesExisting = _allCustomers.some(
         (n) => n.toLowerCase() === q.toLowerCase()
       );
@@ -67,9 +65,8 @@ export async function renderCustomer() {
       paintError();
     }
   }
-  // Focus the input shortly after the screen settles so the user can just
-  // start typing if they want to. Skip on touch devices to avoid the
-  // keyboard popping up unprompted.
+
+  // Focus the input shortly after the screen settles (skip on touch to avoid keyboard pop)
   if (input && !("ontouchstart" in window)) {
     setTimeout(() => input.focus(), 100);
   }
@@ -108,32 +105,94 @@ function paintRecentList(customers) {
     return;
   }
   customers.forEach((name) => {
-    const row = document.createElement("button");
-    row.className = "recent-item";
-    row.type = "button";
-
-    const icon = document.createElement("span");
-    icon.className = "recent-item-icon";
-    icon.textContent = name.charAt(0).toUpperCase();
-
-    const label = document.createElement("span");
-    label.className = "recent-item-name";
-    label.textContent = name;
-
-    const chev = document.createElement("span");
-    chev.className = "recent-item-chev";
-    chev.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
-
-    row.appendChild(icon);
-    row.appendChild(label);
-    row.appendChild(chev);
-
-    row.addEventListener("click", () => {
-      _session.customerName = name;
-      _session.isNewCustomer = false;
-      _showScreen("camera");
-    });
-
+    const row = buildRecentRow(name);
     list.appendChild(row);
+    makeSwipeable(row, {
+      actions: [
+        {
+          label: "Remove",
+          style: "destructive",
+          onTap: () => handleRemove(name),
+        },
+      ],
+    });
+  });
+}
+
+function buildRecentRow(name) {
+  const row = document.createElement("button");
+  row.className = "recent-item";
+  row.type = "button";
+
+  const icon = document.createElement("span");
+  icon.className = "recent-item-icon";
+  icon.textContent = name.charAt(0).toUpperCase();
+
+  const label = document.createElement("span");
+  label.className = "recent-item-name";
+  label.textContent = name;
+
+  const chev = document.createElement("span");
+  chev.className = "recent-item-chev";
+  chev.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+
+  row.appendChild(icon);
+  row.appendChild(label);
+  row.appendChild(chev);
+
+  row.addEventListener("click", () => {
+    _session.customerName = name;
+    _session.isNewCustomer = false;
+    _showScreen("camera");
+  });
+
+  return row;
+}
+
+// ────────────────────────────────────────────────
+// Remove customer (swipe action) — mirrors home screen behavior
+// ────────────────────────────────────────────────
+async function handleRemove(name) {
+  const sp = getCurrentSalesperson();
+  if (!sp) return;
+
+  // Optimistic local update
+  const before = [..._allCustomers];
+  _allCustomers = _allCustomers.filter((n) => n !== name);
+  paintRecentList(_allCustomers);
+  // Also invalidate the home cache so it doesn't show the removed customer
+  invalidateHistoryCache();
+
+  // Fire backend hide
+  try {
+    await hideCustomer(sp, name);
+  } catch (err) {
+    console.error("[customer] hideCustomer failed, restoring:", err);
+    _allCustomers = before;
+    paintRecentList(_allCustomers);
+    showToast(`Couldn't remove ${name} — try again`);
+    return;
+  }
+
+  showToast(`Removed ${name}`, {
+    actionLabel: "Undo",
+    onAction: async () => {
+      try {
+        await unhideCustomer(sp, name);
+        // Re-fetch to pick up server-side ordering
+        try {
+          const all = await getCustomerHistory(sp);
+          _allCustomers = all.filter((n) => n && n !== "New Customer");
+          paintRecentList(_allCustomers);
+        } catch (refreshErr) {
+          // If re-fetch fails, just put it back at the top locally
+          _allCustomers = [name, ..._allCustomers];
+          paintRecentList(_allCustomers);
+        }
+      } catch (err) {
+        console.error("[customer] unhideCustomer failed:", err);
+        showToast(`Couldn't restore ${name}`);
+      }
+    },
   });
 }
