@@ -2,7 +2,7 @@
 
 Mobile-first Progressive Web App for in-field document scanning. Replaces the per-phone iOS Siri Shortcut with a cross-platform (iOS + Android), centrally-updatable web app installed via "Add to Home Screen."
 
-**Live URL:** https://app.dealerscanapp.com (once DNS is live)
+**Live URL:** https://dealerscan.live (once DNS is live)
 **Hosting:** GitHub Pages, served from `main` branch root
 **Updates:** Push to `main` → live within seconds (no service worker = no stale cache)
 
