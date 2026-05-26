@@ -131,3 +131,53 @@ Will be clearly marked as a stub in code comments + DEV-AFFORDANCES.md.
 Just tell me. "Don't like the home screen layout, want it more like X"
 or "history-fetch finding — that's expected, here's why." All of these
 decisions are scaffolding-grade, not load-bearing.
+
+---
+
+### What actually shipped this session (commits + tests)
+
+**Commit `846ecb1`** — screens 2-7 built. All 19 routes wired.
+
+**Verified after deploy:**
+- `http://dealerscan.live/?v=10` → 200 OK
+- `http://dealerscan.live/scripts/app.js?v=10` → 200 OK
+- `http://dealerscan.live/scripts/screens/home.js` → 200 OK
+- All 7 screen modules reachable
+
+**NOT verified** (needs Brandon on a real phone):
+- That tapping "New Scan" actually navigates to customer screen
+- That the customer search/filter feels right typing on a phone
+- That the fake-capture button on the camera stub works
+- That the review thumbnail grid + delete UX is good
+- That real upload actually lands in Drive (depends on `createCustomerFolder`
+  and `uploadPhoto` endpoints — those have not been smoke-tested this session
+  because they write data)
+
+### To test the full flow when you're back
+
+1. Open `https://dealerscan.live/?v=10` on your phone (or hard-reload if PWA)
+2. Sign in as yourself
+3. Home screen → tap "New Scan"
+4. Customer screen → type a name like "Test PWA Customer"
+5. Tap "+ Use as new customer"
+6. Camera stub → tap "Simulate 3 photos"
+7. Review screen → confirm 3 thumbnails, try deleting one
+8. Tap "Upload all"
+9. Upload screen → watch each photo go pending → active → success
+10. Done screen → tap "Scan more for Test PWA Customer" to verify same-folder
+    re-upload path works
+
+If step 8/9 fails: backend write endpoints (`createCustomerFolder`,
+`uploadPhoto`) need investigation. Open browser dev tools console for the
+actual error message — `apiClient.js` throws with descriptive errors that
+should pinpoint where it broke.
+
+### Known limitations
+
+- Camera screen is a stub (intentional, see DEV-AFFORDANCES.md)
+- `getHistory` returns empty for all salespeople — customer list will be
+  empty on the home and customer screens until backend is fixed
+- HTTPS still pending on `dealerscan.live` — site works over HTTP
+- The stub uploads SVG data URLs as "photos" — Drive will accept them but
+  they'll be 1-2KB SVG files, not real JPEG photos. Vision API auto-naming
+  will likely fall back to "Doc N" since there's no real image to detect.
