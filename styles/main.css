@@ -424,6 +424,15 @@ main:has([data-screen="camera"]:not([hidden])) {
   height: 100%;
   object-fit: cover;
   background: #000;
+  /* iOS stutter fix: until the video has loaded metadata + a real frame,
+     the <video> element's intrinsic size is 0x0 and it briefly renders
+     scaled-down before snapping to full size. Keep it visually hidden
+     under a solid black layer until JS adds `.ready` after loadedmetadata. */
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.camera-video.ready {
+  opacity: 1;
 }
 
 /* Flash overlay — pulses white briefly on capture for tactile feedback */
@@ -478,24 +487,42 @@ main:has([data-screen="camera"]:not([hidden])) {
 }
 .camera-customer-chip:empty { display: none; }
 
+/* Bigger Done button — bottom-right of the camera, easy thumb reach */
 .camera-done-btn {
   background: var(--primary-grad);
   color: #fff;
   border: 0.5px solid rgba(255,255,255,0.2);
-  font: inherit; font-weight: 600; font-size: 14px;
-  padding: 10px 18px;
+  font: inherit; font-weight: 700; font-size: 16px;
+  padding: 14px 22px;
   border-radius: 99px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 4px 14px var(--primary-glow);
-  transition: transform 0.1s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 18px var(--primary-glow);
+  transition: transform 0.1s ease, opacity 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  justify-self: end;
+  grid-column: 3;
+  min-width: 88px;
+  letter-spacing: -0.1px;
 }
-.camera-done-btn:active { transform: scale(0.95); }
+.camera-done-btn:active { transform: scale(0.95); box-shadow: 0 3px 10px var(--primary-glow); }
 .camera-done-btn:disabled {
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: rgba(255,255,255,0.15);
   box-shadow: none;
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* Top-right spacer that replaces the old Done button slot.
+   Matches the .icon-button (back button) width so the customer chip
+   stays centered between them. */
+.camera-top-spacer {
+  display: inline-block;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
 }
 
 /* Bottom chrome — shutter row.
@@ -598,7 +625,6 @@ main:has([data-screen="camera"]:not([hidden])) {
 .camera-shutter:disabled .camera-shutter-core { background: rgba(255,255,255,0.45); }
 .camera-shutter:disabled { cursor: not-allowed; }
 
-.camera-bottom-right-spacer { /* keeps the shutter centered in the 3-col grid */ }
 
 /* Permission denied / no camera fallback overlay */
 .camera-fallback {
@@ -997,9 +1023,19 @@ main:has([data-screen="camera"]:not([hidden])) {
 .swipe-foreground {
   position: relative;
   z-index: 2;
+  /* The foreground needs a SOLID backing layer so the action button
+     behind it doesn't show through. We can't rely on the inner row's
+     background because .recent-item uses rgba (translucent). Painting
+     the foreground itself with the bg-bottom color guarantees a fully
+     opaque layer that covers the action layer when the row is closed. */
+  background: var(--bg-bottom);
+  border-radius: inherit;
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
-  /* The .recent-item inside is already styled — we just let it size the
-     foreground naturally. */
+}
+/* Ensure the actual row inside doesn't draw its OWN background outside
+   the foreground — it should be clipped to the foreground's radius. */
+.swipe-foreground .recent-item {
+  border-radius: inherit;
 }
 
 /* When inside a swipe-wrap, a recent-item's border-radius is no longer needed

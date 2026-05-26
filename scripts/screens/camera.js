@@ -106,7 +106,11 @@ async function startCamera() {
     // fires when the video actually has frame data ready to render.
     video.addEventListener("loadedmetadata", () => {
       hideFallback();
-        }, { once: true });
+      // Fade the video in only once it's ready to render real frames.
+      // Without this, iOS shows the element at its intrinsic 0x0 size
+      // for a beat before snapping to full screen — looks like a stutter.
+      video.classList.add("ready");
+    }, { once: true });
 
     // iOS Safari sometimes throws on play() if the user hasn't interacted yet,
     // or if the video element wasn't ready. The element is muted+playsinline
@@ -138,7 +142,12 @@ function stopCamera() {
     _stream = null;
   }
   const video = document.getElementById("camera-video");
-  if (video) video.srcObject = null;
+  if (video) {
+    video.srcObject = null;
+    // Drop the .ready class so the fade-in animation can replay next time
+    // the camera screen is entered.
+    video.classList.remove("ready");
+  }
 }
 
 // Called by the router when navigating away from the camera screen.
