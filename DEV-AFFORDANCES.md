@@ -140,3 +140,26 @@ Description.
 ```
 
 Then add the removal step to the checklist above.
+
+---
+
+## Known issues (deferred, not blocking ship)
+
+### Slight color seam between gradient bottom and iOS home indicator zone
+
+There's a faint visible line where the body's gradient ends and the
+fixed-position background layer's solid fallback color begins, around the
+home indicator on iOS. We tried matching colors and adding extra gradient
+stops; got close but not invisible.
+
+**Why deferred:** purely cosmetic, doesn't affect function, salespeople
+almost certainly won't notice. Comes back to it if it bothers Brandon later.
+
+**Possible fixes to try:**
+- Use a single fixed-position background that extends slightly past the
+  visual viewport (negative top/bottom insets)
+- Drop the gradient entirely in favor of a solid navy that matches the
+  extension's actual primary color
+- Use `background-attachment: fixed` on body with the gradient (was removed
+  earlier as flaky in Safari — but may be fine in PWA standalone mode)
+
