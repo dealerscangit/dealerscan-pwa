@@ -14,13 +14,14 @@ import {
   isSignedIn,
 } from "./currentUser.js";
 
-// Dev debug helper — call window.DS.user.clearCurrentSalesperson() to reset.
+// Dev debug helper — window.DS.user.clearCurrentSalesperson() also works from console.
 window.DS = {
   api: { createCustomerFolder, uploadPhoto, getCustomerHistory },
   user: { SALESPEOPLE, getCurrentSalesperson, setCurrentSalesperson, clearCurrentSalesperson, isSignedIn },
 };
 
 console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() || "(none)");
+console.log("[DealerScan PWA] DEV: long-press the greeting on the home screen to reset sign-in.");
 
 // ───────────────────────────────────────────────────────────
 // Screen routing
@@ -76,10 +77,52 @@ function renderHomeGreeting() {
 }
 
 // ───────────────────────────────────────────────────────────
+// DEV affordance — long-press the greeting to reset sign-in.
+// TODO: remove before public launch (or gate behind a debug flag).
+// ───────────────────────────────────────────────────────────
+function attachDevResetGesture() {
+  const greeting = document.getElementById("home-greeting");
+  if (!greeting) return;
+
+  const HOLD_MS = 1000;
+  let pressTimer = null;
+
+  function startPress() {
+    greeting.style.transition = `opacity ${HOLD_MS}ms linear`;
+    greeting.style.opacity = "0.35";
+    pressTimer = setTimeout(() => {
+      clearCurrentSalesperson();
+      location.reload();
+    }, HOLD_MS);
+  }
+
+  function cancelPress() {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+    greeting.style.transition = "opacity 0.15s ease";
+    greeting.style.opacity = "";
+  }
+
+  // Touch (mobile)
+  greeting.addEventListener("touchstart", startPress, { passive: true });
+  greeting.addEventListener("touchend",   cancelPress);
+  greeting.addEventListener("touchcancel",cancelPress);
+  greeting.addEventListener("touchmove",  cancelPress);
+
+  // Mouse (desktop dev)
+  greeting.addEventListener("mousedown",  startPress);
+  greeting.addEventListener("mouseup",    cancelPress);
+  greeting.addEventListener("mouseleave", cancelPress);
+}
+
+// ───────────────────────────────────────────────────────────
 // Boot
 // ───────────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
   renderSigninPicker();
   renderHomeGreeting();
+  attachDevResetGesture();
   showScreen(isSignedIn() ? "home" : "signin");
 });
