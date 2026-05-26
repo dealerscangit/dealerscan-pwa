@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=9" />
 
-  <link rel="stylesheet" href="styles/main.css?v=12" />
+  <link rel="stylesheet" href="styles/main.css?v=13" />
 </head>
 <body>
   <main>
@@ -147,21 +147,19 @@
     </section>
 
     <!-- ─────────────────────────────────────────────
-         SCREEN 6: upload progress (card grid w/ live thumbs)
+         SCREEN 6: upload progress (card-deck)
+         The deck holds N stacked cards, top card is "active" (uploading
+         right now). As each card completes it animates off-screen and
+         the next card slides forward. Stack visibly shrinks.
          ───────────────────────────────────────────── -->
     <section data-screen="upload" hidden>
       <header class="screen-header">
         <h1>Uploading</h1>
       </header>
 
-      <div class="upload-meta">
-        <div class="upload-progress-wrap">
-          <div class="upload-progress-bar" id="upload-progress-bar"></div>
-        </div>
-        <p class="muted small" id="upload-summary">Preparing…</p>
-      </div>
+      <p class="muted" id="upload-summary">Preparing…</p>
 
-      <div class="upload-grid" id="upload-grid"></div>
+      <div class="card-deck-stage" id="upload-deck"></div>
     </section>
 
     <!-- ─────────────────────────────────────────────
@@ -184,6 +182,6 @@
 
   </main>
 
-  <script type="module" src="scripts/app.js?v=12"></script>
+  <script type="module" src="scripts/app.js?v=13"></script>
 </body>
 </html>

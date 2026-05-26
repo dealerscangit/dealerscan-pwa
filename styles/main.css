@@ -330,21 +330,43 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 }
 
 /* ────────────────────────────────────────
-   Customer screen — inline "use as new" CTA
+   Customer screen — inline "use as new" CTA + bigger recent rows
    ──────────────────────────────────────── */
 .search-wrap {
   flex-shrink: 0;
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; flex-direction: column; gap: 10px;
 }
 
+/* When on the customer screen, recent items get more breathing room than
+   on the home screen — they're the primary content here, not a sidebar. */
+[data-screen="customer"] .recent-list { gap: 10px; }
+[data-screen="customer"] .recent-item {
+  padding: 20px 18px;
+  gap: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-strong);
+}
+[data-screen="customer"] .recent-item-icon {
+  width: 48px; height: 48px;
+  font-size: 18px;
+}
+[data-screen="customer"] .recent-item-name {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+[data-screen="customer"] .recent-item-chev svg { width: 22px; height: 22px; }
+
+[data-screen="customer"] .skeleton-row { height: 88px; }
+
 .inline-new-cta {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 14px;
   background: var(--primary-grad);
   color: #fff;
   border: 0.5px solid rgba(255,255,255,0.18);
-  border-radius: var(--radius-md);
-  padding: 16px 16px;
-  font: inherit; font-weight: 600; font-size: 15px;
+  border-radius: var(--radius-lg);
+  padding: 18px 18px;
+  font: inherit; font-weight: 600; font-size: 16px;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   text-align: left; width: 100%;
   box-shadow: 0 4px 14px var(--primary-glow);
@@ -353,14 +375,15 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 }
 .inline-new-cta:active { transform: scale(0.985); box-shadow: 0 2px 8px var(--primary-glow); }
 .inline-new-cta-plus {
-  width: 28px; height: 28px; border-radius: 50%;
+  width: 32px; height: 32px; border-radius: 50%;
   background: rgba(255,255,255,0.22);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 700; line-height: 1;
+  font-size: 20px; font-weight: 700; line-height: 1;
   flex-shrink: 0;
 }
 .inline-new-cta-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inline-new-cta-chev { display: inline-flex; opacity: 0.7; }
+.inline-new-cta-chev svg { width: 20px; height: 20px; }
 
 @keyframes ctaSlideIn {
   from { opacity: 0; transform: translateY(-6px); max-height: 0; padding-top: 0; padding-bottom: 0; }
@@ -423,104 +446,156 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 .review-thumb-delete:active { background: var(--primary); }
 
 /* ────────────────────────────────────────
-   Upload — card grid w/ live thumbnails + per-card status overlay
+   Upload — stacked card deck
+   One active card on top, queue peeks behind. As cards complete they
+   fly off and the stack visibly shrinks. Active card carries a
+   "2 of 5" count badge so progress is legible without extra UI chrome.
    ──────────────────────────────────────── */
 
-.upload-meta {
-  display: flex; flex-direction: column; gap: 8px;
-  flex-shrink: 0;
-}
-.upload-progress-wrap {
-  width: 100%; height: 6px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 99px;
-  overflow: hidden;
-}
-.upload-progress-bar {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--primary), #ff6b85);
-  border-radius: 99px;
-  transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 12px var(--primary-glow);
-}
-
-.upload-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-  overflow-y: auto; -webkit-overflow-scrolling: touch;
-  flex: 1; align-content: start;
-  padding-bottom: 0.5rem;
-}
-
-.upload-card {
+.card-deck-stage {
+  flex: 1;
   position: relative;
-  aspect-ratio: 3 / 4;
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: border-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease, filter 0.3s ease;
-  animation: thumbPop 0.25s ease-out backwards;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  /* Generous padding so the back-stack cards have room to peek */
+  padding: 8px 8px 24px;
+  perspective: 1000px;
 }
-.upload-card:nth-child(1) { animation-delay: 0ms; }
-.upload-card:nth-child(2) { animation-delay: 40ms; }
-.upload-card:nth-child(3) { animation-delay: 80ms; }
-.upload-card:nth-child(4) { animation-delay: 120ms; }
-.upload-card:nth-child(5) { animation-delay: 160ms; }
-.upload-card:nth-child(6) { animation-delay: 200ms; }
 
-.upload-card img {
+.deck-card {
+  position: absolute;
+  width: min(78%, 320px);
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-xl);
+  background: var(--surface-strong);
+  border: 0.5px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.5s cubic-bezier(0.32, 0.72, 0.0, 1),
+    opacity 0.5s ease,
+    filter 0.4s ease,
+    box-shadow 0.4s ease;
+  transform-origin: center 70%;
+  will-change: transform, opacity;
+}
+
+.deck-card img {
   width: 100%; height: 100%;
   object-fit: cover;
   display: block;
 }
 
-/* The overlay sits on top of the thumb. Background dim varies by status:
-   pending = dim almost completely (waiting in queue)
-   active  = lighter dim + active glow (this one's uploading right now)
-   success = fully reveal the thumb (we're done, it's beautiful, look at it)
-   failed  = red wash, you need to see this */
-.upload-card-overlay {
+/* ── Stack positions (data-pos attribute) ────────
+   pos=0 = active (front, full size, sharp)
+   pos=1 = behind by one (slightly smaller, dimmed)
+   pos=2 = behind by two (smaller still, more dimmed)
+   pos=3+ = hidden (behind the stack) */
+.deck-card[data-pos="0"] {
+  transform: translate(-50%, -50%) translateY(0) scale(1);
+  opacity: 1;
+  z-index: 30;
+  filter: none;
+}
+.deck-card[data-pos="1"] {
+  transform: translate(-50%, -50%) translateY(14px) scale(0.94);
+  opacity: 0.65;
+  z-index: 20;
+  filter: saturate(0.8) brightness(0.9);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.deck-card[data-pos="2"] {
+  transform: translate(-50%, -50%) translateY(28px) scale(0.88);
+  opacity: 0.35;
+  z-index: 10;
+  filter: saturate(0.6) brightness(0.78);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+.deck-card[data-pos="3"], .deck-card[data-hidden] {
+  transform: translate(-50%, -50%) translateY(42px) scale(0.82);
+  opacity: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.deck-card { left: 50%; top: 50%; }
+
+/* ── Completed card flies off the top ─────────── */
+.deck-card.flying-off {
+  transform: translate(-50%, -50%) translateY(-60vh) scale(0.9) rotate(-6deg);
+  opacity: 0;
+  z-index: 40;
+  transition:
+    transform 0.6s cubic-bezier(0.5, 0.0, 0.75, 0.0),
+    opacity 0.4s ease 0.1s;
+}
+
+/* ── Status overlay (only meaningful on the active card) ─── */
+.deck-card-overlay {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 8px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.55);
-  transition: background 0.35s ease, color 0.25s ease;
+  justify-content: space-between;
+  padding: 16px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0.15) 35%,
+    rgba(0, 0, 0, 0.20) 65%,
+    rgba(0, 0, 0, 0.65) 100%
+  );
 }
-.upload-card-icon {
-  display: flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px;
+
+.deck-card-top-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 8px;
+}
+
+/* "2 of 5" badge — top-left of the active card */
+.deck-card-count {
+  display: inline-flex; align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 0.5px solid rgba(255,255,255,0.18);
+}
+
+/* Status icon — top-right corner of the active card */
+.deck-card-status-icon {
+  width: 36px; height: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  border: 0.5px solid rgba(255,255,255,0.2);
+  background: var(--accent-grad);
+  border: 0.5px solid rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(66, 133, 244, 0.45);
   transition: background 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.upload-card-label {
-  font-size: 11px; font-weight: 500;
-  max-width: 90%;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  opacity: 0.85;
+.deck-card.pending .deck-card-status-icon {
+  background: rgba(255,255,255,0.15);
+  box-shadow: none;
+}
+.deck-card.success .deck-card-status-icon {
+  background: var(--success);
+  color: #06381f;
+  box-shadow: 0 4px 14px rgba(52, 211, 153, 0.5);
+  animation: checkPopBig 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.deck-card.failed .deck-card-status-icon {
+  background: var(--danger);
+  color: #3a0e0e;
+  box-shadow: 0 4px 14px rgba(248, 113, 113, 0.45);
 }
 
-.upload-card.pending {
-  filter: saturate(0.6) brightness(0.85);
-}
-.upload-card.pending .upload-card-overlay { background: rgba(0, 0, 0, 0.65); }
-.upload-card.pending .upload-card-icon { color: rgba(255,255,255,0.55); }
-
-.upload-card.active {
-  border-color: rgba(66, 133, 244, 0.6);
-  box-shadow: 0 0 0 1px rgba(66, 133, 244, 0.35), 0 4px 20px rgba(66, 133, 244, 0.35);
-}
-.upload-card.active .upload-card-overlay { background: rgba(20, 50, 110, 0.45); }
-.upload-card.active .upload-card-icon {
-  background: var(--accent-grad);
-  border-color: rgba(255,255,255,0.35);
-}
-
-.upload-card-spinner {
-  width: 20px; height: 20px;
+.deck-card-spinner {
+  width: 18px; height: 18px;
   border: 2.5px solid rgba(255,255,255,0.25);
   border-top-color: #fff;
   border-radius: 50%;
@@ -528,52 +603,57 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.upload-card.success {
-  border-color: rgba(52, 211, 153, 0.4);
-  filter: none;
-}
-.upload-card.success .upload-card-overlay {
-  /* Mostly transparent so the thumb shows through clearly. Tiny dark gradient
-     at the bottom keeps the filename readable. */
-  background: linear-gradient(to top,
-    rgba(0,0,0,0.55) 0%,
-    rgba(0,0,0,0.15) 35%,
-    rgba(0,0,0,0) 60%);
-  justify-content: space-between;
-  padding: 10px;
-}
-.upload-card.success .upload-card-icon {
-  background: var(--success);
-  border-color: rgba(255,255,255,0.4);
-  color: #06381f;
-  transform: scale(1) translateZ(0);
-  animation: checkPopBig 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  margin-top: 4px;
-  margin-left: auto;
-  /* Small badge in top-right instead of center */
-  width: 32px; height: 32px;
-  align-self: flex-end;
-}
-.upload-card.success .upload-card-label {
-  opacity: 0.95;
-  font-weight: 600;
-}
-
 @keyframes checkPopBig {
   0%   { transform: scale(0.3); opacity: 0; }
   60%  { transform: scale(1.18); }
   100% { transform: scale(1); opacity: 1; }
 }
 
-.upload-card.failed {
-  border-color: rgba(248, 113, 113, 0.5);
-  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.25);
+/* Filename at the bottom of the active card */
+.deck-card-filename {
+  color: rgba(255,255,255,0.95);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.45);
 }
-.upload-card.failed .upload-card-overlay { background: rgba(110, 30, 30, 0.55); }
-.upload-card.failed .upload-card-icon {
-  background: var(--danger);
-  border-color: rgba(255,255,255,0.35);
-  color: #3a0e0e;
+
+/* Behind-the-stack cards: dim their overlays so they don't visually compete */
+.deck-card:not([data-pos="0"]) .deck-card-overlay {
+  background: rgba(0, 0, 0, 0.25);
+}
+.deck-card:not([data-pos="0"]) .deck-card-count,
+.deck-card:not([data-pos="0"]) .deck-card-filename {
+  opacity: 0;
+}
+.deck-card:not([data-pos="0"]) .deck-card-status-icon {
+  opacity: 0.4;
+}
+
+/* Activity hint on the active spinner card — subtle outer glow that pulses */
+.deck-card.active[data-pos="0"] {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(66, 133, 244, 0.5),
+    0 0 36px rgba(66, 133, 244, 0.25);
+  animation: deckActivePulse 2.2s ease-in-out infinite;
+}
+@keyframes deckActivePulse {
+  0%, 100% {
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(66, 133, 244, 0.5),
+      0 0 36px rgba(66, 133, 244, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(66, 133, 244, 0.7),
+      0 0 52px rgba(66, 133, 244, 0.45);
+  }
 }
 
 /* ────────────────────────────────────────

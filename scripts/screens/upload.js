@@ -1,8 +1,13 @@
 // scripts/screens/upload.js
-// Screen 6: upload progress with card-grid preview.
-// Each photo card shows the actual thumbnail with a status overlay (spinner,
-// check, X) and is dimmed-then-revealed as upload completes. Live progress
-// bar at top tracks overall completion. Mirrors the extension's upload UX.
+// Screen 6: upload as a stacked card deck.
+//
+// Design: the user sees ONE active card at a time, with up to two queued
+// cards peeking behind it (back-stack). When a card finishes uploading, it
+// animates off-screen to the top, the back-stack advances forward, and the
+// next card becomes active. Visually the stack shrinks to nothing.
+//
+// Active card carries a "2 of 5" count badge + status icon (spinner/check/X)
+// + filename. Pending/back-stack cards are dimmed.
 
 import { getCurrentSalesperson } from "../currentUser.js";
 import { createCustomerFolder, uploadPhoto } from "../apiClient.js";
@@ -10,6 +15,10 @@ import { createCustomerFolder, uploadPhoto } from "../apiClient.js";
 let _showScreen = null;
 let _session = null;
 let _isUploading = false;
+
+// Tracks which photo is currently the front of the deck.
+// Photos at index < _activeIndex are completed (off-stage).
+let _activeIndex = 0;
 
 export function attachUploadHandlers(showScreen, session) {
   _showScreen = showScreen;
@@ -20,16 +29,16 @@ export async function renderUpload() {
   if (_isUploading) return;
   _isUploading = true;
 
-  // Initial paint — all cards visible, all pending
-  paintGrid();
-  paintMeta();
+  _activeIndex = 0;
+  paintDeck();
+  paintSummary();
 
   try {
     const sp = getCurrentSalesperson();
     if (!sp) throw new Error("No signed-in salesperson");
     if (!_session.customerName) throw new Error("No customer selected");
 
-    // 1) Create or find customer folder
+    // 1) Folder
     if (!_session.folderId) {
       _session.folderId = await createCustomerFolder(
         _session.customerName,
@@ -38,31 +47,46 @@ export async function renderUpload() {
       );
     }
 
-    // 2) Upload sequentially to respect Apps Script quotas
+    // 2) Sequential per-photo upload
     for (let i = 0; i < _session.photos.length; i++) {
       const photo = _session.photos[i];
-      if (photo.status === "success") continue; // resumable
+      if (photo.status === "success") {
+        _activeIndex = i + 1;
+        continue;
+      }
+      _activeIndex = i;
       photo.status = "active";
-      paintGrid();
-      paintMeta();
+      updateActiveCard();
+      paintSummary();
 
       try {
         const base64 = dataUrlToBase64(photo.dataUrl);
         await uploadPhoto(_session.folderId, base64, photo.filename);
         photo.status = "success";
+        updateActiveCard();
+        paintSummary();
+        // Hold on the success state long enough to land the check pop,
+        // then animate this card off and advance the stack.
+        await sleep(450);
+        await flyOffActive();
+        _activeIndex = i + 1;
+        paintDeck();
+        paintSummary();
       } catch (err) {
         console.error(`[upload] photo ${photo.filename} failed:`, err);
         photo.status = "failed";
+        updateActiveCard();
+        paintSummary();
+        // Don't auto-advance on failure — let the user see it and decide
+        await sleep(900);
       }
-      paintGrid();
-      paintMeta();
     }
 
     const allOk = _session.photos.every((p) => p.status === "success");
     _isUploading = false;
     if (allOk) {
-      // Tiny pause so the user sees the last check land before transitioning
-      setTimeout(() => _showScreen("done"), 450);
+      await sleep(200);
+      _showScreen("done");
     } else {
       addRetryAffordance();
     }
@@ -72,71 +96,132 @@ export async function renderUpload() {
     _session.photos.forEach((p) => {
       if (p.status === "pending" || p.status === "active") p.status = "failed";
     });
-    paintGrid();
-    paintMeta();
+    paintDeck();
+    paintSummary();
     addRetryAffordance();
   }
 }
 
-function paintMeta() {
+function paintSummary() {
   const summary = document.getElementById("upload-summary");
-  const bar = document.getElementById("upload-progress-bar");
+  if (!summary) return;
 
   const photos = _session.photos || [];
   const done = photos.filter((p) => p.status === "success").length;
   const failed = photos.filter((p) => p.status === "failed").length;
   const total = photos.length;
-  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const customerLabel = _session.customerName ? ` to ${_session.customerName}` : "";
 
-  if (bar) bar.style.width = `${pct}%`;
-  if (summary) {
-    const customerLabel = _session.customerName ? ` to ${_session.customerName}` : "";
-    let txt = `${done} of ${total} uploaded${customerLabel}`;
-    if (failed > 0) txt += ` · ${failed} failed`;
-    summary.textContent = txt;
+  let txt = `${done} of ${total} uploaded${customerLabel}`;
+  if (failed > 0) txt += ` · ${failed} failed`;
+  summary.textContent = txt;
+}
+
+function paintDeck() {
+  const stage = document.getElementById("upload-deck");
+  if (!stage) return;
+  stage.innerHTML = "";
+
+  const photos = _session.photos || [];
+  // Render active + up to 3 cards behind it. Iterating back-to-front so
+  // DOM order matches z-index (the active card ends up last/on-top).
+  const maxVisible = 4;
+  const remainingStart = _activeIndex;
+  const remainingEnd = Math.min(photos.length, _activeIndex + maxVisible);
+
+  for (let i = remainingEnd - 1; i >= remainingStart; i--) {
+    const photo = photos[i];
+    const pos = i - _activeIndex;
+    const card = buildCardElement(photo, pos, i);
+    stage.appendChild(card);
   }
 }
 
-function paintGrid() {
-  const grid = document.getElementById("upload-grid");
-  if (!grid) return;
-  grid.innerHTML = "";
-
+// Surgical update of the active card's status without re-painting the whole
+// deck (which would flash back-stack cards on every status change).
+function updateActiveCard() {
+  const card = document.querySelector(`.deck-card[data-pos="0"]`);
+  if (!card) return;
   const photos = _session.photos || [];
-  photos.forEach((photo, i) => {
-    const card = document.createElement("div");
-    card.className = `upload-card ${photo.status}`;
+  const photo = photos[_activeIndex];
+  if (!photo) return;
 
-    // Real thumbnail of the photo being uploaded
-    const img = document.createElement("img");
-    img.src = photo.dataUrl;
-    img.alt = `Photo ${i + 1}`;
-    card.appendChild(img);
+  card.classList.remove("pending", "active", "success", "failed");
+  card.classList.add(photo.status);
 
-    // Per-card status overlay
-    const overlay = document.createElement("div");
-    overlay.className = "upload-card-overlay";
+  const iconWrap = card.querySelector(".deck-card-status-icon");
+  if (iconWrap) {
+    iconWrap.innerHTML = statusIconHtml(photo.status);
+  }
+  const fname = card.querySelector(".deck-card-filename");
+  if (fname) fname.textContent = photo.filename;
+}
 
-    const icon = document.createElement("div");
-    icon.className = "upload-card-icon";
-    if (photo.status === "pending") {
-      icon.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9" opacity="0.4"/></svg>';
-    } else if (photo.status === "active") {
-      icon.innerHTML = '<div class="upload-card-spinner"></div>';
-    } else if (photo.status === "success") {
-      icon.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-    } else if (photo.status === "failed") {
-      icon.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-    }
-    overlay.appendChild(icon);
+function buildCardElement(photo, pos, indexInPhotos) {
+  const photos = _session.photos || [];
+  const total = photos.length;
 
-    const label = document.createElement("div");
-    label.className = "upload-card-label";
-    label.textContent = photo.filename;
-    overlay.appendChild(label);
+  const card = document.createElement("div");
+  card.className = `deck-card ${photo.status}`;
+  card.setAttribute("data-pos", String(pos));
+  card.setAttribute("data-photo-index", String(indexInPhotos));
 
-    card.appendChild(overlay);
-    grid.appendChild(card);
+  const img = document.createElement("img");
+  img.src = photo.dataUrl;
+  img.alt = `Photo ${indexInPhotos + 1}`;
+  card.appendChild(img);
+
+  const overlay = document.createElement("div");
+  overlay.className = "deck-card-overlay";
+
+  const topRow = document.createElement("div");
+  topRow.className = "deck-card-top-row";
+
+  const count = document.createElement("span");
+  count.className = "deck-card-count";
+  count.textContent = `${indexInPhotos + 1} of ${total}`;
+  topRow.appendChild(count);
+
+  const statusIcon = document.createElement("div");
+  statusIcon.className = "deck-card-status-icon";
+  statusIcon.innerHTML = statusIconHtml(photo.status);
+  topRow.appendChild(statusIcon);
+
+  overlay.appendChild(topRow);
+
+  const fname = document.createElement("div");
+  fname.className = "deck-card-filename";
+  fname.textContent = photo.filename;
+  overlay.appendChild(fname);
+
+  card.appendChild(overlay);
+  return card;
+}
+
+function statusIconHtml(status) {
+  if (status === "active") {
+    return '<div class="deck-card-spinner"></div>';
+  }
+  if (status === "success") {
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  }
+  if (status === "failed") {
+    return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  }
+  return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"><circle cx="12" cy="12" r="8"/></svg>';
+}
+
+// Trigger the fly-off animation on the current active card and resolve
+// when the transition has finished.
+function flyOffActive() {
+  return new Promise((resolve) => {
+    const card = document.querySelector(`.deck-card[data-pos="0"]`);
+    if (!card) { resolve(); return; }
+    card.classList.add("flying-off");
+    const done = () => resolve();
+    card.addEventListener("transitionend", done, { once: true });
+    // Safety net in case transitionend doesn't fire on iOS standalone mode
+    setTimeout(done, 700);
   });
 }
 
@@ -175,6 +260,8 @@ function addRetryAffordance() {
   wrap.appendChild(back);
   screen.appendChild(wrap);
 }
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 function dataUrlToBase64(dataUrl) {
   if (dataUrl.startsWith("data:image/svg+xml")) {
