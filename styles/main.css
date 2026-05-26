@@ -1,27 +1,36 @@
 /* styles/main.css — DealerScan PWA
-   Dark, calm-accent design system. iOS-safe area aware. */
+   Extension-matched design language: navy gradient + glass cards + Google-blue accent.
+   Tokens lifted from new-source/overlay.css for brand cohesion across extension + PWA. */
 
 :root {
   /* Surfaces */
-  --bg: #0a0a0c;
-  --surface: #16161a;
-  --surface-hover: #1f1f25;
-  --border: #2a2a32;
+  --bg-gradient: linear-gradient(160deg, #1a5296, #163f7a, #112f63);
+  --surface:        rgba(255, 255, 255, 0.08);
+  --surface-hover:  rgba(255, 255, 255, 0.14);
+  --surface-active: rgba(255, 255, 255, 0.18);
+  --border:         rgba(255, 255, 255, 0.15);
+  --border-strong:  rgba(255, 255, 255, 0.25);
 
-  /* Text */
-  --text: #f0f0f2;
-  --text-muted: rgba(240, 240, 242, 0.6);
-  --text-dim: rgba(240, 240, 242, 0.4);
+  /* Text — opacity-layered white */
+  --text:        #ffffff;
+  --text-muted:  rgba(255, 255, 255, 0.7);
+  --text-dim:    rgba(255, 255, 255, 0.5);
+  --text-faint:  rgba(255, 255, 255, 0.4);
 
-  /* Accent — calm violet, premium not neon */
-  --accent: #8b5cf6;
-  --accent-soft: #a78bfa;
-  --accent-glow: rgba(139, 92, 246, 0.25);
+  /* Accent — Google blue gradient (matches extension primary CTA) */
+  --accent-grad: linear-gradient(135deg, #4285f4, #2b6ed4);
+  --accent:      #4285f4;
+  --accent-soft: #6ca0f7;
+
+  /* Highlight (reserved for current-user / suggested affordances) */
+  --highlight:        #e94560;
+  --highlight-bg:     rgba(233, 69, 96, 0.18);
+  --highlight-border: rgba(233, 69, 96, 0.4);
 
   /* Geometry */
-  --radius-lg: 1rem;
-  --radius-md: 0.75rem;
-  --radius-sm: 0.5rem;
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
 }
 
 * { box-sizing: border-box; }
@@ -30,9 +39,10 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: var(--bg);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -41,7 +51,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  /* iOS notch + home-indicator safe areas */
+  /* iOS safe areas */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
@@ -52,8 +62,8 @@ main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 1.25rem;
-  min-height: 0; /* allows flex children to scroll */
+  padding: 1.5rem 1rem 1rem;
+  min-height: 0;
 }
 
 [data-screen] {
@@ -65,59 +75,48 @@ main {
 [data-screen][hidden] { display: none; }
 
 h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.5rem 0;
-}
-
-.muted { color: var(--text-muted); }
-.dim   { color: var(--text-dim); }
-
-button {
-  font: inherit;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: 0.875rem 1.25rem;
-  background: var(--accent);
-  color: #fff;
+  font-size: 22px;
   font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  letter-spacing: -0.3px;
+  margin: 0;
+  color: var(--text);
 }
-button:active { transform: scale(0.98); }
-button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.muted { color: var(--text-dim); }
+.faint { color: var(--text-faint); }
 
 input[type="text"], input[type="search"] {
   font: inherit;
   width: 100%;
-  border: 1px solid var(--border);
+  border: 0.5px solid var(--border);
   background: var(--surface);
   color: var(--text);
   border-radius: var(--radius-md);
-  padding: 0.75rem 0.875rem;
+  padding: 9px 12px;
   outline: none;
+  font-size: 13px;
 }
-input:focus { border-color: var(--accent); }
+input::placeholder { color: var(--text-faint); }
+input:focus { border-color: var(--border-strong); background: var(--surface-hover); }
 
 /* ────────────────────────────────────────
-   Sign-in screen — salesperson picker grid
+   Sign-in screen — salesperson picker
    ──────────────────────────────────────── */
 
 .signin-header {
-  padding: 0.5rem 0 1.5rem 0;
+  padding: 0.25rem 0 1.25rem;
   flex-shrink: 0;
 }
-.signin-header h1 { margin-bottom: 0.375rem; }
-.signin-header p  { margin: 0; font-size: 0.9375rem; }
+.signin-header h1 { margin-bottom: 4px; }
+.signin-header p  { margin: 0; font-size: 12px; color: var(--text-dim); }
 
 .picker-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
+  gap: 6px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 1rem;
+  padding-bottom: 0.5rem;
 }
 
 .picker-tile {
@@ -125,40 +124,40 @@ input:focus { border-color: var(--accent); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.625rem;
+  gap: 8px;
   background: var(--surface);
-  border: 1px solid transparent;
+  border: 0.5px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 1.125rem 0.5rem;
+  padding: 14px 6px;
   cursor: pointer;
-  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   -webkit-tap-highlight-color: transparent;
   font-family: inherit;
-  font-weight: 500;
   color: var(--text);
 }
+.picker-tile:hover  { background: var(--surface-hover); }
 .picker-tile:active {
-  transform: scale(0.96);
-  border-color: var(--accent);
-  background: var(--surface-hover);
+  transform: scale(0.97);
+  background: var(--surface-active);
+  border-color: var(--border-strong);
 }
 
 .picker-tile-initial {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-soft) 100%);
+  background: var(--accent-grad);
   color: #fff;
   font-weight: 600;
-  font-size: 1.125rem;
-  box-shadow: 0 0 20px var(--accent-glow);
+  font-size: 14px;
+  letter-spacing: -0.2px;
 }
 
 .picker-tile-name {
-  font-size: 0.8125rem;
+  font-size: 12px;
   font-weight: 500;
   text-align: center;
   line-height: 1.2;
@@ -166,22 +165,23 @@ input:focus { border-color: var(--accent); }
 }
 
 /* ────────────────────────────────────────
-   Home screen (placeholder for now)
+   Home screen
    ──────────────────────────────────────── */
 
 .home-greeting {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0.5rem 0 1.5rem 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  margin: 0.25rem 0 1.25rem;
+  color: var(--text);
 }
 
 .scaffold-note {
   background: var(--surface);
-  border: 1px dashed var(--border);
+  border: 0.5px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem;
-  font-size: 0.875rem;
+  padding: 12px 14px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--text-muted);
 }
