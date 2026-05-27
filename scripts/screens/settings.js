@@ -247,8 +247,8 @@ async function paintHealth() {
     } else {
       const items = await getQueueAll().catch(() => []);
       const customers = items.map((i) => i.customerName).slice(0, 3).join(", ");
-      const more = items.length > 3 ? \` +\${items.length - 3} more\` : "";
-      queueEl.textContent = \`\${queued} pending: \${customers}\${more}\`;
+      const more = items.length > 3 ? ` +${items.length - 3} more` : "";
+      queueEl.textContent = `${queued} pending: ${customers}${more}`;
       queueEl.style.color = "var(--warning, #fbbf24)";
     }
   }
@@ -276,8 +276,8 @@ async function paintHealth() {
         const usedMB = (est.usage || 0) / 1024 / 1024;
         const quotaMB = (est.quota || 0) / 1024 / 1024;
         storageEl.textContent = quotaMB
-          ? \`\${usedMB.toFixed(1)} MB of \${(quotaMB / 1024).toFixed(0)} GB available\`
-          : \`\${usedMB.toFixed(1)} MB\`;
+          ? `${usedMB.toFixed(1)} MB of ${(quotaMB / 1024).toFixed(0)} GB available`
+          : `${usedMB.toFixed(1)} MB`;
       } catch {
         storageEl.textContent = "unavailable";
       }
