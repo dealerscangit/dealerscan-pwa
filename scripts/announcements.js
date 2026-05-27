@@ -33,8 +33,16 @@ import {
 import { getCurrentSalesperson } from "./currentUser.js";
 import { showToast } from "./swipeActions.js";
 
-const DISMISSED_KEY = "ds.dismissed_announcements";
+const DISMISSED_KEY_PREFIX = "ds.dismissed_announcements.";
 const BANNER_AUTO_DISMISS_MS = 6000;
+
+// Returns the localStorage key scoped to the current user. Without this,
+// all users on the same device share dismissed-ids (one person dismisses
+// for everyone). Once Sign-In ships well key by email instead of name.
+function dismissedKey() {
+  const sp = (getCurrentSalesperson() || "anon").toLowerCase().trim().replace(/\s+/g, "_");
+  return DISMISSED_KEY_PREFIX + sp;
+}
 
 let _bannerTimer = null;
 let _audienceMode = "all";
@@ -44,7 +52,7 @@ let _audienceMode = "all";
 // ──────────────────────────────────────────────────────────────────
 function getDismissedIds() {
   try {
-    return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || "[]"));
+    return new Set(JSON.parse(localStorage.getItem(dismissedKey()) || "[]"));
   } catch {
     return new Set();
   }
@@ -54,7 +62,7 @@ function markDismissed(id) {
   set.add(id);
   // Cap stored ids to most recent 200 so localStorage doesn't grow forever
   const arr = Array.from(set).slice(-200);
-  try { localStorage.setItem(DISMISSED_KEY, JSON.stringify(arr)); } catch {}
+  try { localStorage.setItem(dismissedKey(), JSON.stringify(arr)); } catch {}
 }
 
 // ──────────────────────────────────────────────────────────────────
