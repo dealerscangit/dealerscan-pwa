@@ -85,7 +85,12 @@
 * { box-sizing: border-box; }
 
 html {
-  margin: 0; padding: 0; height: 100%;
+  margin: 0; padding: 0;
+  /* min-height (not height) lets the html grow with content if needed,
+     but always covers the dynamic viewport. dvh handles iOS URL bar
+     show/hide so the gradient never gets cut off. */
+  min-height: 100%;
+  min-height: 100dvh;
   background: var(--bg-gradient);
   background-color: var(--bg-bottom);
   overscroll-behavior-y: none;
@@ -93,7 +98,12 @@ html {
 body {
   margin: 0; padding: 0;
   height: 100vh; height: 100dvh;
-  background: transparent;
+  /* Solid bg-bottom navy so the safe-area-inset-bottom zone (under the iOS
+     home indicator) always matches the bottom of the gradient. Without this,
+     iOS PWA's html element doesn't extend the gradient under the home
+     indicator and the OS-default color (or transparent through to nothing)
+     shows as a faint band at the screen bottom. */
+  background-color: var(--bg-bottom);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -111,7 +121,16 @@ body {
 }
 body::before {
   content: '';
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  /* Fixed gradient layer behind all content. Explicit height: 100dvh
+     instead of bottom: 0 so it covers the full dynamic viewport including
+     under the home indicator zone — bottom: 0 can be interpreted by iOS
+     WebKit as the bottom of the visible safe area, leaving the home
+     indicator strip uncovered. */
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
   background: var(--bg-gradient);
   background-color: var(--bg-bottom);
   z-index: -1;
