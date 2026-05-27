@@ -14,6 +14,7 @@ import {
 } from "../apiClient.js";
 import { makeSwipeable, showToast } from "../swipeActions.js";
 import { reportError } from "../errorReporter.js";
+import { count as queueCount, processQueue } from "../offlineQueue.js";
 
 let _showScreen = null;
 let _session = null;
@@ -73,21 +74,34 @@ function paintIdentity() {
 // ──────────────────────────────────────────────────────────────────
 // Status dot (pinned strip, top-left)
 // ──────────────────────────────────────────────────────────────────
-function updateStatusDot() {
+async function updateStatusDot() {
   const dot = document.getElementById("status-dot");
   const label = document.getElementById("status-label");
   if (!dot || !label) return;
 
   dot.classList.remove("syncing", "offline");
 
+  // When offline, also report how many scans are queued so the user
+  // knows their work is safe and will sync later.
   if (!navigator.onLine) {
     dot.classList.add("offline");
-    label.textContent = "Offline";
+    let queued = 0;
+    try { queued = await queueCount(); } catch {}
+    label.textContent = queued > 0 ? `Offline · ${queued} queued` : "Offline";
     return;
   }
   if (_isSyncing) {
     dot.classList.add("syncing");
     label.textContent = "Syncing";
+    return;
+  }
+  // When online but with pending queue items, show "Syncing N queued"
+  // so the user sees the auto-drain happening.
+  let queued = 0;
+  try { queued = await queueCount(); } catch {}
+  if (queued > 0) {
+    dot.classList.add("syncing");
+    label.textContent = `Syncing · ${queued} queued`;
     return;
   }
   label.textContent = "Synced";

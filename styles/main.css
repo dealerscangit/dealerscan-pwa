@@ -2386,3 +2386,36 @@ main:has([data-screen="camera"]:not([hidden])) {
 @keyframes loadSpinnerRot {
   to { transform: rotate(360deg); }
 }
+
+/* ─── Offline / queued visual state ───────────────────────────────
+   Subtle visual differentiation when a scan was queued (vs uploaded
+   live). The done screen check icon goes amber for queued, and the
+   text says "Saved offline" instead of "All set". */
+.done-check.done-check-queued {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.35));
+}
+
+/* Settings health-section drain button — appears next to the queue
+   status row when items are pending AND device is online. Lets the
+   user manually trigger a sync drain without waiting for the next
+   auto-attempt. */
+.settings-row-chev-btn {
+  background: rgba(90, 158, 255, 0.14);
+  border: 0.5px solid rgba(90, 158, 255, 0.32);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              transform var(--dur-fast) var(--ease-out-cubic);
+}
+.settings-row-chev-btn:active {
+  transform: scale(0.96);
+  background: rgba(90, 158, 255, 0.22);
+}
+.settings-row-chev-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -29,6 +29,7 @@ import {
 } from "./screens/settings.js";
 import "./errorReporter.js"; // side-effect: installs global window error handlers
 import { checkBackendVersion } from "./versionCheck.js";
+import { processQueue, count as queueCount } from "./offlineQueue.js";
 
 // Apply saved accent + behavior settings before any screen renders so the
 // initial paint uses the user's chosen accent color (no flash of default blue).
@@ -76,6 +77,34 @@ if (localStorage.getItem("ds.debug") === "1") {
 // Fire-and-forget backend version check — logs mismatches to the event log
 // so we notice when a deploy is stale. See scripts/versionCheck.js.
 setTimeout(checkBackendVersion, 2000);
+
+// Process the offline queue on boot (delayed so it doesn't compete with
+// first-paint) and again whenever the network comes back online. The
+// queue is a no-op when empty so this is cheap.
+async function drainQueue() {
+  try {
+    const c = await queueCount();
+    if (c === 0) return;
+    console.log(`[app] draining offline queue: ${c} items`);
+    const result = await processQueue();
+    console.log("[app] queue drain result:", result);
+    // If we successfully uploaded any, refresh the home overview so the
+    // counts and timeline reflect what just synced.
+    if (result.uploaded > 0) {
+      const { renderHome } = await import("./screens/home.js");
+      if (typeof renderHome === "function") renderHome();
+    }
+  } catch (err) {
+    console.warn("[app] queue drain failed:", err);
+  }
+}
+// Initial drain after boot settle
+setTimeout(drainQueue, 2500);
+// Drain on reconnect — fires when offline -> online
+window.addEventListener("online", () => {
+  console.log("[app] back online — draining queue");
+  drainQueue();
+});
 
 // ───────────────────────────────────────────────────────────
 // Screen routing

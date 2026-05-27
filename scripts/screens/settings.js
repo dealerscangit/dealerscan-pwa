@@ -6,6 +6,7 @@
 
 import { getCurrentSalesperson, clearCurrentSalesperson } from "../currentUser.js";
 import { EXPECTED_BACKEND_VERSION } from "../versionCheck.js";
+import { count as queueCount, processQueue, getAll as getQueueAll } from "../offlineQueue.js";
 
 const STORAGE_KEY = "ds.settings.v1";
 
@@ -169,6 +170,9 @@ export function renderSettings() {
     };
   }
 
+  // Health diagnostics
+  paintHealth();
+
   // About / version info
   const backendV = document.getElementById("settings-backend-version");
   if (backendV) {
@@ -211,5 +215,74 @@ async function pingBackendVersion() {
     return (await res.text()).trim();
   } catch {
     return null;
+  }
+}
+
+
+// ──────────────────────────────────────────────────────────────────
+// Health diagnostics
+// ──────────────────────────────────────────────────────────────────
+async function paintHealth() {
+  // Connection
+  const conn = document.getElementById("health-connection");
+  if (conn) {
+    if (navigator.onLine) {
+      conn.textContent = "Online";
+      conn.style.color = "var(--success)";
+    } else {
+      conn.textContent = "Offline — scans will queue";
+      conn.style.color = "var(--warning, #fbbf24)";
+    }
+  }
+
+  // Offline queue
+  const queueEl = document.getElementById("health-queue");
+  const drainBtn = document.getElementById("health-drain-btn");
+  let queued = 0;
+  try { queued = await queueCount(); } catch {}
+  if (queueEl) {
+    if (queued === 0) {
+      queueEl.textContent = "Empty";
+      queueEl.style.color = "";
+    } else {
+      const items = await getQueueAll().catch(() => []);
+      const customers = items.map((i) => i.customerName).slice(0, 3).join(", ");
+      const more = items.length > 3 ? \` +\${items.length - 3} more\` : "";
+      queueEl.textContent = \`\${queued} pending: \${customers}\${more}\`;
+      queueEl.style.color = "var(--warning, #fbbf24)";
+    }
+  }
+  if (drainBtn) {
+    drainBtn.hidden = queued === 0 || !navigator.onLine;
+    drainBtn.onclick = async () => {
+      drainBtn.disabled = true;
+      drainBtn.querySelector("span").textContent = "Draining…";
+      try {
+        await processQueue();
+      } catch (err) {
+        console.warn("[settings] manual drain failed:", err);
+      }
+      drainBtn.disabled = false;
+      paintHealth();
+    };
+  }
+
+  // Storage estimate (best-effort; not supported on all browsers)
+  const storageEl = document.getElementById("health-storage");
+  if (storageEl) {
+    if (navigator.storage && typeof navigator.storage.estimate === "function") {
+      try {
+        const est = await navigator.storage.estimate();
+        const usedMB = (est.usage || 0) / 1024 / 1024;
+        const quotaMB = (est.quota || 0) / 1024 / 1024;
+        storageEl.textContent = quotaMB
+          ? \`\${usedMB.toFixed(1)} MB of \${(quotaMB / 1024).toFixed(0)} GB available\`
+          : \`\${usedMB.toFixed(1)} MB\`;
+      } catch {
+        storageEl.textContent = "unavailable";
+      }
+    } else {
+      storageEl.textContent = "unavailable";
+    }
   }
 }

@@ -401,6 +401,35 @@
           </button>
         </div>
 
+        <!-- ── Health (diagnostics) ───────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">Health</p>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Connection</p>
+              <p class="settings-row-sub" id="health-connection">checking…</p>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Offline queue</p>
+              <p class="settings-row-sub" id="health-queue">checking…</p>
+            </div>
+            <button class="settings-row-chev-btn" id="health-drain-btn" type="button" hidden>
+              <span style="font-size: 11px; color: var(--accent-soft); font-weight: 500;">Drain now</span>
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Storage used</p>
+              <p class="settings-row-sub" id="health-storage">checking…</p>
+            </div>
+          </div>
+        </div>
+
         <!-- ── About ──────────────────────────────── -->
         <div class="settings-section">
           <p class="settings-section-label">About</p>

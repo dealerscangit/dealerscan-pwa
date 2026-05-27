@@ -11,6 +11,7 @@
 
 import { getCurrentSalesperson } from "../currentUser.js";
 import { createCustomerFolder, uploadPhoto } from "../apiClient.js";
+import { enqueue as enqueueOffline } from "../offlineQueue.js";
 import { reportError } from "../errorReporter.js";
 
 let _showScreen = null;
@@ -38,6 +39,30 @@ export async function renderUpload() {
     const sp = getCurrentSalesperson();
     if (!sp) throw new Error("No signed-in salesperson");
     if (!_session.customerName) throw new Error("No customer selected");
+
+    // ── Offline path: queue everything for later, skip the live upload loop.
+    // If we're offline at the moment of upload, write the whole scan (customer
+    // + folder + photos) to IndexedDB and route straight to the done screen
+    // with a "queued" message. processQueue() runs on boot + on the online
+    // event to drain the queue automatically.
+    if (!navigator.onLine) {
+      await enqueueOffline({
+        salesName: sp,
+        customerName: _session.customerName,
+        isNewCustomer: !!_session.isNewCustomer,
+        folderId: _session.folderId || null,
+        photos: _session.photos.map((p) => ({
+          dataUrl: p.dataUrl,
+          filename: p.filename,
+        })),
+      });
+      // Mark all photos as queued so the done screen shows a sensible summary
+      _session.photos.forEach((p) => { p.status = "queued"; });
+      _session.uploadStatus = "queued";
+      _isUploading = false;
+      _showScreen("done");
+      return;
+    }
 
     // 1) Folder
     if (!_session.folderId) {

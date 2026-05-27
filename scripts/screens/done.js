@@ -30,11 +30,29 @@ export function attachDoneHandlers(showScreen, session) {
 export function renderDone() {
   const summary = document.getElementById("done-summary");
   const sameBtn = document.getElementById("btn-scan-another-same");
+  const heading = document.querySelector('[data-screen="done"] h1');
+  const checkIcon = document.querySelector(".done-check");
   if (!summary) return;
 
-  const n = _session.photos.filter((p) => p.status === "success").length;
   const customer = _session.customerName || "the customer";
-  summary.textContent = `Uploaded ${n} ${n === 1 ? "photo" : "photos"} for ${customer}.`;
+  const isQueued = _session.uploadStatus === "queued";
+
+  if (isQueued) {
+    // Offline path: scan saved to local queue, will upload when signal returns.
+    const n = _session.photos.length;
+    if (heading) heading.textContent = "Saved offline";
+    if (summary) {
+      summary.textContent = `Queued ${n} ${n === 1 ? "photo" : "photos"} for ${customer}. Will upload when back online.`;
+    }
+    if (checkIcon) checkIcon.classList.add("done-check-queued");
+  } else {
+    const n = _session.photos.filter((p) => p.status === "success").length;
+    if (heading) heading.textContent = "All set";
+    if (summary) {
+      summary.textContent = `Uploaded ${n} ${n === 1 ? "photo" : "photos"} for ${customer}.`;
+    }
+    if (checkIcon) checkIcon.classList.remove("done-check-queued");
+  }
 
   if (sameBtn) {
     sameBtn.textContent = `Scan more for ${customer}`;
