@@ -490,14 +490,20 @@ main:has([data-screen="camera"]:not([hidden])) {
   position: relative;
   flex: 1;
   background: #000;
-  /* No border-radius — full bleed black to the screen edge. Previously
-     18px radius created a 4-5px visible band at all four corners where
-     the body bg showed through. The iPhones own screen radius provides
-     natural rounded corners for free. */
+  /* No border-radius — full bleed black to the screen edge. iPhone's
+     own screen corner radius provides natural rounded corners. */
   overflow: hidden;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Pull the stage DOWN into the safe-area-inset-bottom zone.
+     iOS PWA standalone mode clips flex children at the visible
+     viewport boundary even with viewport-fit=cover, so the only
+     reliable way to extend background under the home indicator
+     is a negative margin equal to the safe area inset. Camera-bottom
+     internally already pads for the safe area so the shutter
+     stays clear of the home indicator. */
+  margin-bottom: calc(env(safe-area-inset-bottom, 0px) * -1);
 }
 
 .camera-video {
@@ -2046,15 +2052,17 @@ main:has([data-screen="camera"]:not([hidden])) {
    ═══════════════════════════════════════════════════════════════════ */
 .quick-menu {
   position: fixed;
-  /* Explicit dimensions instead of inset: 0 — iOS WebKit sometimes
-     resolves inset: 0 to the visible safe area on PWA standalone,
-     leaving the home indicator strip uncovered (visible as a band
-     when the kebab dim is active). */
+  /* Explicit dimensions + negative bottom to cover the safe-area-inset-
+     bottom zone. iOS PWA standalone resolves height: 100dvh as the
+     visible viewport (NOT including home indicator), so a fixed-pos
+     element with that height stops at the safe-area boundary. The
+     negative-bottom trick: position from top:0 to a bottom that's
+     PAST the visible viewport by the inset amount. */
   top: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) * -1);
   left: 0;
+  right: 0;
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
   z-index: 200;
   pointer-events: auto;
 }
