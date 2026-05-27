@@ -2961,11 +2961,14 @@ main:has([data-screen="camera"]:not([hidden])) {
 .team-search-pill-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-pill);
-  padding: 8px 14px;
+  /* Thinner pill — was 8x14, now 5x12. Less intrusive, more like a
+     search hint than a primary action. Font also dropped 14 -> 13. */
+  padding: 5px 12px;
+  margin-top: -2px;
   margin-bottom: 4px;
   transition: border-color var(--dur-fast) var(--ease-out-cubic),
               background var(--dur-fast) var(--ease-out-cubic);
@@ -2984,7 +2987,7 @@ main:has([data-screen="camera"]:not([hidden])) {
   border: none;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   padding: 0;
   outline: none;
   min-width: 0;

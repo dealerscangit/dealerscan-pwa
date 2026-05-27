@@ -8,6 +8,7 @@ import { getCurrentSalesperson, clearCurrentSalesperson } from "../currentUser.j
 import { EXPECTED_BACKEND_VERSION } from "../versionCheck.js";
 import { count as queueCount, processQueue, getAll as getQueueAll } from "../offlineQueue.js";
 import { shouldShowDevEntry } from "./devPanel.js";
+import { hasPermissionSync } from "../roles.js";
 
 const STORAGE_KEY = "ds.settings.v1";
 
