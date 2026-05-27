@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=49" />
+  <link rel="stylesheet" href="styles/main.css?v=50" />
 </head>
 <body>
   <main>
@@ -306,6 +306,86 @@
           </div>
           <div class="dashboard-top-list" id="dash-top-list">
             <p class="dashboard-empty">No customers this week yet.</p>
+          </div>
+        </div>
+
+        <!-- ── Team section (manager / dev only) ─────
+             Hidden by default; dashboard.js unhides if user has
+             viewAllData permission. Shows team-wide totals, per-
+             salesperson today counts, recent scans across team, and
+             inactive salespeople. -->
+        <div id="dashboard-team-section" hidden>
+          <p class="settings-section-label" style="margin: 16px 4px 8px;">Team</p>
+
+          <!-- Team totals row -->
+          <div class="dashboard-stat-row">
+            <div class="dashboard-stat">
+              <p class="dashboard-stat-value" id="team-total-today"><span class="loading-spinner lg"></span></p>
+              <p class="dashboard-stat-label">team scans today</p>
+            </div>
+            <div class="dashboard-stat">
+              <p class="dashboard-stat-value" id="team-active-count"><span class="loading-spinner lg"></span></p>
+              <p class="dashboard-stat-label">active today</p>
+            </div>
+            <div class="dashboard-stat">
+              <p class="dashboard-stat-value" id="team-total-week"><span class="loading-spinner lg"></span></p>
+              <p class="dashboard-stat-label">team scans week</p>
+            </div>
+          </div>
+
+          <!-- Per-salesperson today bars -->
+          <div class="dashboard-card">
+            <div class="dashboard-card-header">
+              <p class="dashboard-card-title">By salesperson today</p>
+              <p class="dashboard-card-meta">sorted by scan count</p>
+            </div>
+            <div class="team-bars" id="team-bars">
+              <p class="dashboard-empty">No team scans yet today.</p>
+            </div>
+          </div>
+
+          <!-- Recent scans across team -->
+          <div class="dashboard-card">
+            <div class="dashboard-card-header">
+              <p class="dashboard-card-title">Recent across team</p>
+              <p class="dashboard-card-meta">last 20</p>
+            </div>
+            <div class="team-recent-list" id="team-recent-list">
+              <p class="dashboard-empty">No recent scans.</p>
+            </div>
+          </div>
+
+          <!-- Inactive salespeople -->
+          <div class="dashboard-card">
+            <div class="dashboard-card-header">
+              <p class="dashboard-card-title">Inactive today</p>
+              <p class="dashboard-card-meta">haven’t scanned yet</p>
+            </div>
+            <div class="team-inactive-list" id="team-inactive-list">
+              <p class="dashboard-empty">Everyone has scanned today.</p>
+            </div>
+          </div>
+
+          <!-- Customer search across team -->
+          <div class="dashboard-card">
+            <div class="dashboard-card-header">
+              <p class="dashboard-card-title">Customer search</p>
+              <p class="dashboard-card-meta">across team</p>
+            </div>
+            <div class="team-search-wrapper">
+              <input
+                type="text"
+                id="team-customer-search"
+                class="team-search-input"
+                placeholder="Search any customer…"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+              />
+              <div class="team-search-results" id="team-search-results">
+                <p class="dashboard-empty" style="font-size: 12px;">Start typing to search across all salespeople.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -603,6 +683,6 @@
   </div>
   </main>
 
-  <script type="module" src="scripts/app.js?v=49"></script>
+  <script type="module" src="scripts/app.js?v=50"></script>
 </body>
 </html>

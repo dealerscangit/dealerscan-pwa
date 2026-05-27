@@ -63,6 +63,7 @@ function doGet(e) {
   if (action === "uploadPhoto")     return uploadPhoto(e);
   if (action === "getHistory")      return getHistory(e);
   if (action === "getHomeOverview") return getHomeOverview(e);  // ← NEW (PWA home screen)
+  if (action === "getTeamOverview") return getTeamOverview(e); // ← NEW (manager dashboard)
   if (action === "getRegistry")     return getRegistry(e);      // ← user registry read
   if (action === "updateUser")      return updateUser(e);       // ← add/edit user (dev only)
   if (action === "deleteUser")      return deleteUser(e);       // ← deactivate user (dev only)
@@ -683,7 +684,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.5"); }
+function getVersion(e) { return ContentService.createTextOutput("1.6"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
@@ -1161,6 +1162,148 @@ function deleteUser(e) {
 
     _writeRegistry(registry);
     return json({ ok: true });
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
+// ────────── Team overview (manager + dev) ──────────
+// Aggregates ScanLog across ALL salespeople. Powers the manager/dev
+// dashboard "Team" section. Returns:
+//   - todayBySalesperson: [{ name, scans, lastScanAt }]
+//   - recentScans: last 20 across team with salesperson stamps
+//   - inactiveToday: list of registry users with 0 scans today
+//   - teamTotalToday / teamTotalWeek
+//   - searchableCustomers: dedupe of all customer names with their
+//     salesperson + scan count (for cross-team search)
+//
+// Caller is expected to be role manager or dev. Endpoint does not
+// enforce that today — once Sign-In + verifyToken ship we will gate it.
+function getTeamOverview(e) {
+  try {
+    var ss = getHistorySpreadsheet(), sheet = ss.getSheetByName("ScanLog");
+    if (!sheet) return json({ todayBySalesperson: [], recentScans: [], inactiveToday: [], teamTotalToday: 0, teamTotalWeek: 0, searchableCustomers: [] });
+
+    var data = sheet.getDataRange().getValues();
+    var now = new Date();
+    var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    var startOfWeek = startOfDay - 6 * 86400000;
+
+    var bySp = {};              // name -> { scans, lastScanAt, photoCount }
+    var bySpWeek = {};          // name -> week scan count
+    var customerIndex = {};     // customer -> { salesperson, scans, photoCount, lastSeenAt }
+    var allScans = [];          // for recentScans sort
+
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      var sp = (row[0] || "").toString().trim();
+      var customer = (row[1] || "").toString().trim();
+      var ts = row[3];
+      var photoCount = row[7] || 0;
+      if (!sp || typeof ts !== "number") continue;
+
+      // Today bucket
+      if (ts >= startOfDay) {
+        if (!bySp[sp]) bySp[sp] = { scans: 0, lastScanAt: 0, photoCount: 0 };
+        bySp[sp].scans++;
+        bySp[sp].photoCount += photoCount;
+        if (ts > bySp[sp].lastScanAt) bySp[sp].lastScanAt = ts;
+
+        allScans.push({
+          salesperson: sp,
+          customer: customer,
+          folderId: row[2] || "",
+          timestamp: ts,
+          photoCount: photoCount,
+        });
+      }
+
+      // Week bucket (for team totals)
+      if (ts >= startOfWeek) {
+        bySpWeek[sp] = (bySpWeek[sp] || 0) + 1;
+      }
+
+      // Customer index (all time — for searching)
+      if (customer) {
+        if (!customerIndex[customer]) {
+          customerIndex[customer] = { salesperson: sp, scans: 0, photoCount: 0, lastSeenAt: 0 };
+        }
+        customerIndex[customer].scans++;
+        customerIndex[customer].photoCount += photoCount;
+        if (ts > customerIndex[customer].lastSeenAt) {
+          customerIndex[customer].lastSeenAt = ts;
+          customerIndex[customer].salesperson = sp;
+        }
+      }
+    }
+
+    // Per-salesperson rollup
+    var todayBySalesperson = Object.keys(bySp).map(function(name) {
+      return {
+        name: name,
+        scans: bySp[name].scans,
+        photoCount: bySp[name].photoCount,
+        lastScanAt: new Date(bySp[name].lastScanAt).toISOString(),
+      };
+    });
+    todayBySalesperson.sort(function(a, b) { return b.scans - a.scans; });
+
+    // Team totals
+    var teamTotalToday = 0;
+    Object.keys(bySp).forEach(function(k) { teamTotalToday += bySp[k].scans; });
+    var teamTotalWeek = 0;
+    Object.keys(bySpWeek).forEach(function(k) { teamTotalWeek += bySpWeek[k]; });
+
+    // Recent scans across team (last 20, newest first)
+    allScans.sort(function(a, b) { return b.timestamp - a.timestamp; });
+    var recentScans = allScans.slice(0, 20).map(function(s) {
+      return {
+        salesperson: s.salesperson,
+        customer: s.customer,
+        folderId: s.folderId,
+        timestamp: new Date(s.timestamp).toISOString(),
+        photoCount: s.photoCount,
+      };
+    });
+
+    // Inactive today — registry users who haven't scanned. We read the
+    // registry to know who's expected to be active. Anyone in the registry
+    // with active=true and no scans today is "inactive."
+    var inactiveToday = [];
+    try {
+      var reg = _readRegistry();
+      (reg.users || []).forEach(function(u) {
+        if (u.active === false) return;
+        if (!bySp[u.name]) {
+          inactiveToday.push({ name: u.name, role: u.role });
+        }
+      });
+    } catch (regErr) {
+      // If registry unavailable, just skip the inactive calc — non-fatal.
+    }
+
+    // Searchable customer index — array form so the client can search/filter
+    var searchableCustomers = Object.keys(customerIndex).map(function(name) {
+      return {
+        name: name,
+        salesperson: customerIndex[name].salesperson,
+        scans: customerIndex[name].scans,
+        photoCount: customerIndex[name].photoCount,
+        lastSeenAt: new Date(customerIndex[name].lastSeenAt).toISOString(),
+      };
+    });
+    searchableCustomers.sort(function(a, b) {
+      return new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime();
+    });
+
+    return json({
+      todayBySalesperson: todayBySalesperson,
+      recentScans: recentScans,
+      inactiveToday: inactiveToday,
+      teamTotalToday: teamTotalToday,
+      teamTotalWeek: teamTotalWeek,
+      searchableCustomers: searchableCustomers,
+    });
   } catch (err) {
     return jsonError(err);
   }

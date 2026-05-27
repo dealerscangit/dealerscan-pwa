@@ -15,6 +15,8 @@ import {
 import { makeSwipeable, showToast } from "../swipeActions.js";
 import { reportError } from "../errorReporter.js";
 import { count as queueCount, processQueue } from "../offlineQueue.js";
+import { hasPermissionSync } from "../roles.js";
+import { getTeamOverview } from "../apiClient.js";
 import { getOrFetch, invalidate as invalidateCache } from "../dataCache.js";
 
 let _showScreen = null;
@@ -123,21 +125,28 @@ async function renderOverview() {
     return;
   }
 
-  // Pull from shared cache; if stale, kick off a fresh fetch in the
-  // background. This is the key change that makes re-entering screens
-  // feel instant: we paint cached data immediately AND let the refresh
-  // happen invisibly.
-  const cacheKey = `homeOverview:${sp}`;
+  // Managers + dev see a TEAM timeline (everyone's scans, with salesperson
+  // chip on each row). Sales role sees ONLY their own scans (current behavior).
+  // The cache key differs by mode so we don't mix the two datasets.
+  const isTeamView = hasPermissionSync("viewAllData");
+  const cacheKey = isTeamView
+    ? `teamOverview:all`
+    : `homeOverview:${sp}`;
+
+  const fetcher = isTeamView
+    ? () => mergeTeamWithPersonal(sp)
+    : () => getHomeOverview(sp);
+
   const { value: cached, isStale, freshPromise } = await getOrFetch(
     cacheKey,
-    () => getHomeOverview(sp)
+    fetcher
   );
 
   // Initial paint from cache (or spinners if no cache yet)
   if (cached) {
     paintCounters(cached);
     paintTimeline(cached.timeline);
-    _overviewCache = cached;  // legacy compat for getCachedHistory
+    _overviewCache = cached;
   } else {
     paintLoadingSpinners();
     paintSkeleton();
@@ -282,9 +291,15 @@ function buildTimelineRow(entry) {
   const subtitle = document.createElement("span");
   subtitle.className = "timeline-row-subtitle";
   const photoCount = entry.photoCount || 0;
-  subtitle.textContent = photoCount
+  const docsText = photoCount
     ? `${photoCount} ${photoCount === 1 ? "doc" : "docs"}`
     : "scan";
+  // For managers / dev viewing team timeline, prefix subtitle with salesperson
+  // name so they see "Brandon · 2 docs" instead of just "2 docs". Falls back
+  // to plain docs text if entry has no salesperson (own-data only mode).
+  subtitle.textContent = entry.salesperson
+    ? `${entry.salesperson} · ${docsText}`
+    : docsText;
 
   textBlock.appendChild(name);
   textBlock.appendChild(subtitle);
@@ -379,4 +394,40 @@ export function getCachedHistory() {
 
 export function invalidateHistoryCache() {
   _overviewCache = null;
+}
+
+
+// Manager-tier home: blends the personal counters (their OWN today/week/total)
+// with a team-wide timeline (everyones recent scans). The personal counters
+// stay personal because the manager still wants to see their own work; only
+// the timeline shows the whole team.
+//
+// Returns the same shape as getHomeOverview so paintCounters/paintTimeline
+// don't need to know the difference.
+async function mergeTeamWithPersonal(salesName) {
+  // Fire both in parallel — minimizes total wait
+  const [personal, team] = await Promise.all([
+    getHomeOverview(salesName),
+    getTeamOverview(),
+  ]);
+
+  // Build a unified timeline from team.recentScans, sorted desc by timestamp.
+  // Each entry carries the salesperson so buildTimelineRow can render the chip.
+  const teamTimeline = (team?.recentScans || [])
+    .slice()
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+    .slice(0, 12)
+    .map((s) => ({
+      customer: s.customer,
+      photoCount: s.photoCount || 0,
+      timestamp: s.timestamp,
+      folderId: s.folderId,
+      salesperson: s.salesperson,
+    }));
+
+  // Personal counters stay personal; timeline becomes team-wide.
+  return {
+    ...personal,
+    timeline: teamTimeline,
+  };
 }

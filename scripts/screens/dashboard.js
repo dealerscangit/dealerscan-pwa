@@ -7,8 +7,9 @@
 // switching from home → dashboard feels free.
 
 import { getCurrentSalesperson } from "../currentUser.js";
-import { getHomeOverview } from "../apiClient.js";
+import { getHomeOverview, getTeamOverview } from "../apiClient.js";
 import { getOrFetch } from "../dataCache.js";
+import { hasPermissionSync } from "../roles.js";
 
 let _showScreen = null;
 let _session = null;
@@ -51,6 +52,178 @@ export async function renderDashboard() {
       console.error("[dashboard] fetch failed:", err);
       if (!cached) paintEmpty();
     }
+  }
+
+  // After personal data renders, paint team section if user has the
+  // viewAllData permission (manager + dev). The team section's own
+  // visibility starts hidden; we unhide and populate it here.
+  renderTeamSection();
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Team section (manager + dev)
+// Gated by hasPermissionSync("viewAllData"). Hidden for sales role.
+// ──────────────────────────────────────────────────────────────────
+async function renderTeamSection() {
+  const teamSection = document.getElementById("dashboard-team-section");
+  if (!teamSection) return;
+
+  // Permission gate. If user lacks viewAllData, keep section hidden.
+  if (!hasPermissionSync("viewAllData")) {
+    teamSection.hidden = true;
+    return;
+  }
+  teamSection.hidden = false;
+
+  // Use the same shared cache pattern as the personal data
+  const { value: cached, freshPromise } = await getOrFetch(
+    "teamOverview:all",
+    () => getTeamOverview()
+  );
+
+  if (cached) paintTeam(cached);
+
+  if (freshPromise) {
+    try {
+      const data = await freshPromise;
+      paintTeam(data);
+    } catch (err) {
+      console.warn("[dashboard] team fetch failed:", err);
+    }
+  }
+}
+
+function paintTeam(data) {
+  // Top stats: total today, active today, total week
+  const totalTodayEl = document.getElementById("team-total-today");
+  const activeCountEl = document.getElementById("team-active-count");
+  const totalWeekEl = document.getElementById("team-total-week");
+  if (totalTodayEl) totalTodayEl.textContent = data.teamTotalToday || 0;
+  if (activeCountEl) activeCountEl.textContent = (data.todayBySalesperson || []).length;
+  if (totalWeekEl) totalWeekEl.textContent = data.teamTotalWeek || 0;
+
+  // Per-salesperson bars
+  const barsEl = document.getElementById("team-bars");
+  if (barsEl) {
+    const list = data.todayBySalesperson || [];
+    if (list.length === 0) {
+      barsEl.innerHTML = '<p class="dashboard-empty">No team scans yet today.</p>';
+    } else {
+      const maxScans = Math.max(...list.map((s) => s.scans), 1);
+      barsEl.innerHTML = list.map((sp) => {
+        const pct = Math.round((sp.scans / maxScans) * 100);
+        return `
+          <div class="team-bar-row">
+            <span class="team-bar-name">${escapeHtml(sp.name)}</span>
+            <div class="team-bar-track">
+              <div class="team-bar-fill" style="width: ${pct}%"></div>
+            </div>
+            <span class="team-bar-count">${sp.scans}</span>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  // Recent scans across team
+  const recentEl = document.getElementById("team-recent-list");
+  if (recentEl) {
+    const list = data.recentScans || [];
+    if (list.length === 0) {
+      recentEl.innerHTML = '<p class="dashboard-empty">No recent scans.</p>';
+    } else {
+      recentEl.innerHTML = list.map((s) => {
+        const time = formatTimeShort(s.timestamp);
+        const photoLabel = s.photoCount === 1 ? "1 doc" : `${s.photoCount} docs`;
+        return `
+          <div class="team-recent-row">
+            <div class="team-recent-avatar">${initial(s.salesperson)}</div>
+            <div class="team-recent-text">
+              <p class="team-recent-name">${escapeHtml(s.customer || "(no customer)")}</p>
+              <p class="team-recent-sub">${escapeHtml(s.salesperson)} · ${photoLabel}</p>
+            </div>
+            <span class="team-recent-time">${time}</span>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  // Inactive salespeople today
+  const inactiveEl = document.getElementById("team-inactive-list");
+  if (inactiveEl) {
+    const list = data.inactiveToday || [];
+    if (list.length === 0) {
+      inactiveEl.innerHTML = '<p class="dashboard-empty">Everyone has scanned today.</p>';
+    } else {
+      inactiveEl.innerHTML = list.map((u) => `
+        <div class="team-inactive-row">
+          <div class="team-recent-avatar">${initial(u.name)}</div>
+          <p class="team-inactive-name">${escapeHtml(u.name)}</p>
+          <span class="team-inactive-role">${u.role || "sales"}</span>
+        </div>
+      `).join("");
+    }
+  }
+
+  // Customer search wiring
+  const searchInput = document.getElementById("team-customer-search");
+  const resultsEl = document.getElementById("team-search-results");
+  if (searchInput && resultsEl) {
+    const customers = data.searchableCustomers || [];
+    // Stash on the input so the handler can read it without closure traps
+    searchInput._customers = customers;
+    // One-time handler (clean up any previous on re-render)
+    searchInput.oninput = (ev) => {
+      const q = (ev.target.value || "").trim().toLowerCase();
+      if (!q) {
+        resultsEl.innerHTML = '<p class="dashboard-empty" style="font-size: 12px;">Start typing to search across all salespeople.</p>';
+        return;
+      }
+      const matches = (searchInput._customers || [])
+        .filter((c) => (c.name || "").toLowerCase().includes(q))
+        .slice(0, 10);
+      if (matches.length === 0) {
+        resultsEl.innerHTML = `<p class="dashboard-empty" style="font-size: 12px;">No matches for “${escapeHtml(q)}”</p>`;
+        return;
+      }
+      resultsEl.innerHTML = matches.map((c) => {
+        const photoLabel = c.photoCount === 1 ? "1 doc" : `${c.photoCount} docs`;
+        return `
+          <div class="team-search-row">
+            <div class="team-recent-text">
+              <p class="team-recent-name">${escapeHtml(c.name)}</p>
+              <p class="team-recent-sub">${escapeHtml(c.salesperson)} · ${photoLabel}</p>
+            </div>
+          </div>
+        `;
+      }).join("");
+    };
+  }
+}
+
+function initial(name) {
+  return (name || "?").charAt(0).toUpperCase();
+}
+
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatTimeShort(iso) {
+  try {
+    const d = new Date(iso);
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? "p" : "a";
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${m.toString().padStart(2, "0")}${ampm}`;
+  } catch {
+    return "";
   }
 }
 

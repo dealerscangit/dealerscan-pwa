@@ -217,3 +217,16 @@ export async function deleteUser(email, hard = false) {
   if (!res.ok) throw new Error(`deleteUser HTTP ${res.status}`);
   return await res.json();
 }
+
+// ────────── Team overview (manager + dev) ──────────
+// Aggregates ScanLog across all salespeople. Returns todayBySalesperson,
+// recentScans, inactiveToday, teamTotalToday, teamTotalWeek,
+// searchableCustomers. See backend Code.gs getTeamOverview for the
+// full response shape.
+export async function getTeamOverview() {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "getTeamOverview");
+  const res = await fetch(url.toString(), { method: "GET" });
+  if (!res.ok) throw new Error(`getTeamOverview HTTP ${res.status}`);
+  return await res.json();
+}
