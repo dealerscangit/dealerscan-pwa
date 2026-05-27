@@ -409,6 +409,10 @@ function saveToHistory(customerName, salesName) {
 
 function getHistory(e) {
   var salesName = decodeURIComponent(e.parameter.salesName || "").trim().replace(/[^\x20-\x7E]/g, "");
+  // Force Apps Script to flush any pending writes AND invalidate its internal
+  // read cache. Without this, manual edits to CustomerHistory in the Sheets UI
+  // may not be visible to the script for ~6 hours.
+  SpreadsheetApp.flush();
   var ss = getHistorySpreadsheet(), sheet = ss.getSheetByName(HISTORY_SHEET_NAME);
   if (!sheet) return ContentService.createTextOutput("New Customer");
   var data = sheet.getDataRange().getValues();
@@ -444,6 +448,8 @@ function getHomeOverview(e) {
     };
     if (!salesName) return json(emptyResponse);
 
+    // Force fresh read so manual ScanLog edits in Sheets UI take effect immediately
+    SpreadsheetApp.flush();
     var ss = getHistorySpreadsheet(), sheet = ss.getSheetByName("ScanLog");
     if (!sheet) return json(emptyResponse);
     var data = sheet.getDataRange().getValues();
@@ -690,7 +696,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.8"); }
+function getVersion(e) { return ContentService.createTextOutput("1.9"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {

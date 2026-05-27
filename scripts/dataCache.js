@@ -11,7 +11,7 @@
 // triggers a background refresh on access but still paints from
 // cache while it's in flight.
 
-const TTL_MS = 60000; // overview considered fresh for 60s
+const TTL_MS = 15000;  // 15s — balance of perf and freshness // overview considered fresh for 60s
 
 const _cache = new Map();  // key -> { value, fetchedAt, inflight }
 

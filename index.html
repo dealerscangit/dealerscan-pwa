@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=57" />
+  <link rel="stylesheet" href="styles/main.css?v=58" />
 </head>
 <body>
   <main>
@@ -329,8 +329,25 @@
              viewAllData permission. Shows team-wide totals, per-
              salesperson today counts, recent scans across team, and
              inactive salespeople. -->
-        <div id="dashboard-team-section" hidden>
-          <p class="settings-section-label" style="margin: 6px 4px 2px;">Team</p>
+        <div id="dashboard-team-section" class="dashboard-team-section" hidden>
+          <p class="settings-section-label dashboard-team-label">Team</p>
+
+          <!-- Search bar sits FLUSH under the Team label, thin and minimal. -->
+          <div class="team-search-pill-wrapper">
+            <svg class="team-search-pill-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              type="text"
+              id="team-customer-search"
+              class="team-search-pill-input"
+              placeholder="Search team customers…"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+            />
+          </div>
+          <div class="team-search-results-floating" id="team-search-results" hidden>
+            <p class="dashboard-empty" style="font-size: 12px;">Start typing to search across all salespeople.</p>
+          </div>
 
           <!-- Team totals row -->
           <div class="dashboard-stat-row">
@@ -346,24 +363,6 @@
               <p class="dashboard-stat-value" id="team-total-week"><span class="loading-spinner lg"></span></p>
               <p class="dashboard-stat-label">team scans week</p>
             </div>
-          </div>
-
-          <!-- Customer search across team — MOVED to top of team section,
-               styled as a thin rounded pill bar with inline search icon. -->
-          <div class="team-search-pill-wrapper">
-            <svg class="team-search-pill-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input
-              type="text"
-              id="team-customer-search"
-              class="team-search-pill-input"
-              placeholder="Search any customer across team…"
-              autocomplete="off"
-              autocorrect="off"
-              spellcheck="false"
-            />
-          </div>
-          <div class="team-search-results-floating" id="team-search-results" hidden>
-            <p class="dashboard-empty" style="font-size: 12px;">Start typing to search across all salespeople.</p>
           </div>
 
           <!-- Per-salesperson today bars (COLLAPSIBLE — collapsed by default) -->
@@ -765,6 +764,6 @@
   </div>
   </main>
 
-  <script type="module" src="scripts/app.js?v=57"></script>
+  <script type="module" src="scripts/app.js?v=58"></script>
 </body>
 </html>

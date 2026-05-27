@@ -3271,3 +3271,73 @@ main:has([data-screen="camera"]:not([hidden])) {
 .ann-user-row.checked {
   background: rgba(90, 158, 255, 0.12);
 }
+
+/* ─── Team section layout (Dashboard) ─────────────────────────────
+   Proper rhythm: tight label → thin search → small gap → stat row →
+   gap → collapsed cards. Each card sits flush with consistent spacing
+   instead of the visually-noisy mix we had. */
+.dashboard-team-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.dashboard-team-label {
+  margin: 0 4px 0 !important;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+}
+
+/* Override the prior pill styles for the team search — now even thinner. */
+.dashboard-team-section .team-search-pill-wrapper {
+  /* Significantly shorter — was 5x12, now 4x10. Reads as a hint not
+     a primary action. Sits flush directly under the Team label. */
+  padding: 4px 10px;
+  gap: 6px;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.035);
+}
+.dashboard-team-section .team-search-pill-input {
+  font-size: 12px;
+  /* Slightly muted text so the bar feels lighter on the page */
+  color: var(--text);
+}
+.dashboard-team-section .team-search-pill-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 12px;
+}
+.dashboard-team-section .team-search-pill-icon {
+  opacity: 0.55;
+}
+
+/* Stat row tighter inside team section */
+.dashboard-team-section .dashboard-stat-row {
+  margin: 2px 0;
+}
+.dashboard-team-section .dashboard-stat {
+  padding: 8px 6px;
+}
+.dashboard-team-section .dashboard-stat-value {
+  font-size: 20px;
+}
+.dashboard-team-section .dashboard-stat-label {
+  font-size: 9px;
+  letter-spacing: 0.4px;
+}
+
+/* Collapsed cards: tighter vertical padding, smaller chevron, cleaner
+   rhythm. Headers also pack tighter when there's no body shown. */
+.dashboard-team-section .dashboard-card--collapsible {
+  padding: 10px 12px;
+}
+.dashboard-team-section .dashboard-card--collapsible .dashboard-card-title {
+  font-size: 13px;
+}
+.dashboard-team-section .dashboard-card--collapsible .dashboard-card-meta {
+  font-size: 10px;
+  margin-top: 1px;
+}
+.dashboard-team-section .dashboard-card--collapsible .chev {
+  font-size: 12px;
+  opacity: 0.5;
+}
