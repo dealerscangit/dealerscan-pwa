@@ -20,23 +20,48 @@ export function attachDashboardHandlers(showScreen, session) {
 
 export async function renderDashboard() {
   // Try cache first for instant paint
-  if (_lastData) paint(_lastData);
-  else paintEmpty();
+  if (_lastData) {
+    paint(_lastData);
+  } else {
+    // No cache — show spinners in all stat fields. Loading state must
+    // be visible immediately, even if the network is fast.
+    paintLoadingSpinners();
+  }
 
-  // Then refresh in background
   const sp = getCurrentSalesperson();
   if (!sp) {
     paintEmpty();
     return;
   }
+  const fetchStart = Date.now();
   try {
     const data = await getHomeOverview(sp);
+    // Enforce minimum spinner visible time — same 400ms threshold as
+    // the home screen so the loading state is perceptible even on a
+    // very fast network. Cached re-renders bypass this entirely.
+    if (!_lastData) {
+      const elapsed = Date.now() - fetchStart;
+      if (elapsed < 400) {
+        await new Promise((r) => setTimeout(r, 400 - elapsed));
+      }
+    }
     _lastData = data;
     paint(data);
   } catch (err) {
     console.error("[dashboard] fetch failed:", err);
     if (!_lastData) paintEmpty();
   }
+}
+
+// Paint loading spinners into the stat fields. Mirrors home.js's
+// paintLoadingSpinners shape so the two screens feel consistent.
+function paintLoadingSpinners() {
+  const totalEl = document.getElementById("dash-week-total");
+  if (totalEl) totalEl.innerHTML = '<span class="loading-spinner"></span>';
+  ["dash-peak-hour", "dash-avg-docs", "dash-week-scans"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<span class="loading-spinner lg"></span>';
+  });
 }
 
 function paint(data) {

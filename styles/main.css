@@ -1061,6 +1061,11 @@ main:has([data-screen="camera"]:not([hidden])) {
      so we override per-context below. */
 }
 [data-screen="customer"] .swipe-wrap { border-radius: var(--radius-lg); }
+/* Timeline rows on the home screen use radius-lg on the card, so the
+   swipe-wrap needs to match — otherwise the wraps overflow:hidden clips
+   at 10px while the card draws at 14px, leaving 4px corner gaps that
+   expose the swipe-foreground's solid navy background at all four corners. */
+[data-screen="home"] .timeline .swipe-wrap { border-radius: var(--radius-lg); }
 
 /* Action layer sits BEHIND the row, revealed when the row slides left. */
 .swipe-actions {

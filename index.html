@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=31" />
+  <link rel="stylesheet" href="styles/main.css?v=32" />
 </head>
 <body>
   <main>
@@ -272,7 +272,7 @@
         <div class="dashboard-card">
           <div class="dashboard-card-header">
             <p class="dashboard-card-title">This week</p>
-            <p class="dashboard-card-meta" id="dash-week-total">—</p>
+            <p class="dashboard-card-meta" id="dash-week-total"><span class="loading-spinner"></span></p>
           </div>
           <div class="week-chart" id="week-chart" aria-label="Daily scan counts for the last 7 days">
             <!-- 7 bars injected by JS -->
@@ -285,15 +285,15 @@
         <!-- Stat row: peak hour + avg docs + week scans -->
         <div class="dashboard-stat-row">
           <div class="dashboard-stat">
-            <p class="dashboard-stat-value" id="dash-peak-hour">—</p>
+            <p class="dashboard-stat-value" id="dash-peak-hour"><span class="loading-spinner lg"></span></p>
             <p class="dashboard-stat-label">peak hour</p>
           </div>
           <div class="dashboard-stat">
-            <p class="dashboard-stat-value" id="dash-avg-docs">—</p>
+            <p class="dashboard-stat-value" id="dash-avg-docs"><span class="loading-spinner lg"></span></p>
             <p class="dashboard-stat-label">avg docs / customer</p>
           </div>
           <div class="dashboard-stat">
-            <p class="dashboard-stat-value" id="dash-week-scans">—</p>
+            <p class="dashboard-stat-value" id="dash-week-scans"><span class="loading-spinner lg"></span></p>
             <p class="dashboard-stat-label">scans this week</p>
           </div>
         </div>
@@ -478,6 +478,6 @@
   </div>
   </main>
 
-  <script type="module" src="scripts/app.js?v=31"></script>
+  <script type="module" src="scripts/app.js?v=32"></script>
 </body>
 </html>
