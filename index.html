@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=50" />
+  <link rel="stylesheet" href="styles/main.css?v=51" />
 </head>
 <body>
   <main>
@@ -46,6 +46,21 @@
         </div>
         <button class="status-strip-right" id="btn-settings" type="button" aria-label="Settings">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+
+      <!-- Announcement banner — hidden until home.js paints one in.
+           Auto-dismisses after 6s; tap to dismiss early. -->
+      <div class="announcement-banner" id="announcement-banner" hidden role="status" aria-live="polite">
+        <span class="announcement-banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        </span>
+        <div class="announcement-banner-body">
+          <p class="announcement-banner-from" id="announcement-banner-from"></p>
+          <p class="announcement-banner-text" id="announcement-banner-text"></p>
+        </div>
+        <button class="announcement-banner-close" id="announcement-banner-close" type="button" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
 
@@ -333,57 +348,68 @@
             </div>
           </div>
 
-          <!-- Per-salesperson today bars -->
-          <div class="dashboard-card">
-            <div class="dashboard-card-header">
-              <p class="dashboard-card-title">By salesperson today</p>
-              <p class="dashboard-card-meta">sorted by scan count</p>
+          <!-- Customer search across team — MOVED to top of team section,
+               styled as a thin rounded pill bar with inline search icon. -->
+          <div class="team-search-pill-wrapper">
+            <svg class="team-search-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              type="text"
+              id="team-customer-search"
+              class="team-search-pill-input"
+              placeholder="Search any customer across team…"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+            />
+          </div>
+          <div class="team-search-results-floating" id="team-search-results" hidden>
+            <p class="dashboard-empty" style="font-size: 12px;">Start typing to search across all salespeople.</p>
+          </div>
+
+          <!-- Per-salesperson today bars (COLLAPSIBLE — collapsed by default) -->
+          <div class="dashboard-card dashboard-card--collapsible dashboard-card--collapsed" id="team-bars-card">
+            <div class="dashboard-card-header" data-collapse-toggle="team-bars-card">
+              <div>
+                <p class="dashboard-card-title">By salesperson today</p>
+                <p class="dashboard-card-meta" id="team-bars-meta">sorted by scan count</p>
+              </div>
+              <span class="chev" aria-hidden="true">▾</span>
             </div>
-            <div class="team-bars" id="team-bars">
-              <p class="dashboard-empty">No team scans yet today.</p>
+            <div class="collapse-body">
+              <div class="team-bars" id="team-bars">
+                <p class="dashboard-empty">No team scans yet today.</p>
+              </div>
             </div>
           </div>
 
-          <!-- Recent scans across team -->
-          <div class="dashboard-card">
-            <div class="dashboard-card-header">
-              <p class="dashboard-card-title">Recent across team</p>
-              <p class="dashboard-card-meta">last 20</p>
+          <!-- Recent scans across team (COLLAPSIBLE) -->
+          <div class="dashboard-card dashboard-card--collapsible dashboard-card--collapsed" id="team-recent-card">
+            <div class="dashboard-card-header" data-collapse-toggle="team-recent-card">
+              <div>
+                <p class="dashboard-card-title">Recent across team</p>
+                <p class="dashboard-card-meta">last 20</p>
+              </div>
+              <span class="chev" aria-hidden="true">▾</span>
             </div>
-            <div class="team-recent-list" id="team-recent-list">
-              <p class="dashboard-empty">No recent scans.</p>
-            </div>
-          </div>
-
-          <!-- Inactive salespeople -->
-          <div class="dashboard-card">
-            <div class="dashboard-card-header">
-              <p class="dashboard-card-title">Inactive today</p>
-              <p class="dashboard-card-meta">haven’t scanned yet</p>
-            </div>
-            <div class="team-inactive-list" id="team-inactive-list">
-              <p class="dashboard-empty">Everyone has scanned today.</p>
+            <div class="collapse-body">
+              <div class="team-recent-list" id="team-recent-list">
+                <p class="dashboard-empty">No recent scans.</p>
+              </div>
             </div>
           </div>
 
-          <!-- Customer search across team -->
-          <div class="dashboard-card">
-            <div class="dashboard-card-header">
-              <p class="dashboard-card-title">Customer search</p>
-              <p class="dashboard-card-meta">across team</p>
+          <!-- Inactive salespeople (COLLAPSIBLE) -->
+          <div class="dashboard-card dashboard-card--collapsible dashboard-card--collapsed" id="team-inactive-card">
+            <div class="dashboard-card-header" data-collapse-toggle="team-inactive-card">
+              <div>
+                <p class="dashboard-card-title">Inactive today</p>
+                <p class="dashboard-card-meta" id="team-inactive-meta">haven’t scanned yet</p>
+              </div>
+              <span class="chev" aria-hidden="true">▾</span>
             </div>
-            <div class="team-search-wrapper">
-              <input
-                type="text"
-                id="team-customer-search"
-                class="team-search-input"
-                placeholder="Search any customer…"
-                autocomplete="off"
-                autocorrect="off"
-                spellcheck="false"
-              />
-              <div class="team-search-results" id="team-search-results">
-                <p class="dashboard-empty" style="font-size: 12px;">Start typing to search across all salespeople.</p>
+            <div class="collapse-body">
+              <div class="team-inactive-list" id="team-inactive-list">
+                <p class="dashboard-empty">Everyone has scanned today.</p>
               </div>
             </div>
           </div>
@@ -587,6 +613,56 @@
       </div>
     </section>
 
+    <!-- Announcement compose modal — manager + dev only.
+         Triggered by quick menu → New announcement. -->
+    <div class="ann-modal" id="ann-modal" hidden>
+      <div class="ann-modal-backdrop" id="ann-modal-backdrop"></div>
+      <div class="ann-modal-panel">
+        <header class="ann-modal-header">
+          <h2>New announcement</h2>
+          <button class="icon-button" id="ann-modal-close" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </header>
+        <div class="ann-modal-body">
+          <label class="ann-field">
+            <span class="ann-field-label">Message</span>
+            <textarea id="ann-body" rows="3" maxlength="280" placeholder="Test drive event Saturday 10am…"></textarea>
+            <span class="ann-char-count" id="ann-char-count">0 / 280</span>
+          </label>
+
+          <div class="ann-field">
+            <span class="ann-field-label">Audience</span>
+            <div class="ann-audience-toggle" id="ann-audience-toggle">
+              <button type="button" data-aud="all" class="active">Everyone</button>
+              <button type="button" data-aud="users">Specific people</button>
+            </div>
+          </div>
+
+          <div class="ann-field" id="ann-users-picker" hidden>
+            <span class="ann-field-label">Select recipients</span>
+            <div class="ann-users-list" id="ann-users-list">
+              <!-- populated from registry by announcements.js -->
+            </div>
+          </div>
+
+          <div class="ann-field">
+            <span class="ann-field-label">Expires after</span>
+            <select id="ann-ttl">
+              <option value="1">1 hour</option>
+              <option value="4">4 hours</option>
+              <option value="24" selected>24 hours</option>
+              <option value="72">3 days</option>
+            </select>
+          </div>
+        </div>
+        <footer class="ann-modal-footer">
+          <button class="dev-button-secondary" id="ann-modal-cancel" type="button">Cancel</button>
+          <button class="dev-button-primary" id="ann-modal-send" type="button">Send</button>
+        </footer>
+      </div>
+    </div>
+
     <!-- Modal: add/edit user (lives outside the screen so it can overlay everything) -->
     <div class="dev-user-modal" id="dev-user-modal" hidden>
       <div class="dev-user-modal-backdrop" id="dev-user-modal-backdrop"></div>
@@ -666,6 +742,12 @@
         </span>
         <span class="quick-menu-item-label">Switch user</span>
       </button>
+      <button class="quick-menu-item" data-menu-action="announce" id="qm-announce-item" type="button" role="menuitem" hidden>
+        <span class="quick-menu-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        </span>
+        <span class="quick-menu-item-label">New announcement</span>
+      </button>
       <div class="quick-menu-divider" aria-hidden="true"></div>
       <button class="quick-menu-item" data-menu-action="help" type="button" role="menuitem">
         <span class="quick-menu-item-icon" aria-hidden="true">
@@ -683,6 +765,6 @@
   </div>
   </main>
 
-  <script type="module" src="scripts/app.js?v=50"></script>
+  <script type="module" src="scripts/app.js?v=51"></script>
 </body>
 </html>

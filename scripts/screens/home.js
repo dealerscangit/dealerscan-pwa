@@ -15,7 +15,8 @@ import {
 import { makeSwipeable, showToast } from "../swipeActions.js";
 import { reportError } from "../errorReporter.js";
 import { count as queueCount, processQueue } from "../offlineQueue.js";
-import { hasPermissionSync } from "../roles.js";
+import { hasPermissionSync, getCurrentUserRecord, loadRegistry } from "../roles.js";
+import { maybeShowBanner } from "../announcements.js";
 import { getTeamOverview } from "../apiClient.js";
 import { getOrFetch, invalidate as invalidateCache } from "../dataCache.js";
 
@@ -58,6 +59,7 @@ export function attachHomeHandlers(showScreen, session) {
 }
 
 export function renderHome() {
+  maybeShowBanner();  // fire-and-forget; banner paints when ready
   paintIdentity();
   updateStatusDot();
   renderOverview();
@@ -66,12 +68,28 @@ export function renderHome() {
 // ──────────────────────────────────────────────────────────────────
 // Identity (top profile card)
 // ──────────────────────────────────────────────────────────────────
-function paintIdentity() {
+async function paintIdentity() {
   const sp = getCurrentSalesperson() || "Salesperson";
   const avatar = document.getElementById("profile-card-avatar");
   const name = document.getElementById("profile-card-name");
+  const sub = document.getElementById("profile-card-sub");
   if (avatar) avatar.textContent = sp.charAt(0).toUpperCase();
   if (name) name.textContent = sp;
+
+  // Role label from registry. Cascade: cached lookup -> async load -> fallback.
+  // The label uses the human-friendly "label" field from the registrys roles
+  // map (Salesperson / Manager / Dev) rather than the raw role key.
+  if (sub) {
+    try {
+      const reg = await loadRegistry();
+      const record = await getCurrentUserRecord();
+      const roleKey = record?.role || "sales";
+      const label = reg?.roles?.[roleKey]?.label || roleKey;
+      sub.textContent = label;
+    } catch {
+      sub.textContent = "Salesperson"; // safe fallback
+    }
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────

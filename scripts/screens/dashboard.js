@@ -18,6 +18,17 @@ let _lastData = null;
 export function attachDashboardHandlers(showScreen, session) {
   _showScreen = showScreen;
   _session = session;
+
+  // Collapse / expand wiring for the three collapsible team cards.
+  // Header has data-collapse-toggle="cardId" pointing at the wrapper id;
+  // tapping toggles the dashboard-card--collapsed class.
+  document.querySelectorAll("[data-collapse-toggle]").forEach((header) => {
+    header.addEventListener("click", () => {
+      const targetId = header.dataset.collapseToggle;
+      const card = document.getElementById(targetId);
+      if (card) card.classList.toggle("dashboard-card--collapsed");
+    });
+  });
 }
 
 export async function renderDashboard() {
@@ -177,9 +188,13 @@ function paintTeam(data) {
     searchInput.oninput = (ev) => {
       const q = (ev.target.value || "").trim().toLowerCase();
       if (!q) {
-        resultsEl.innerHTML = '<p class="dashboard-empty" style="font-size: 12px;">Start typing to search across all salespeople.</p>';
+        // Hide the floating results card entirely when query is empty so
+        // it doesnt take up space above the team data.
+        resultsEl.hidden = true;
+        resultsEl.innerHTML = '';
         return;
       }
+      resultsEl.hidden = false;
       const matches = (searchInput._customers || [])
         .filter((c) => (c.name || "").toLowerCase().includes(q))
         .slice(0, 10);
@@ -199,6 +214,23 @@ function paintTeam(data) {
         `;
       }).join("");
     };
+  }
+
+  // Surface live counts in the COLLAPSED header so a glance gives info
+  // without expanding the card.
+  const barsMeta = document.getElementById("team-bars-meta");
+  if (barsMeta) {
+    const n = (data.todayBySalesperson || []).length;
+    barsMeta.textContent = n === 0
+      ? "no scans yet today"
+      : `${n} active today`;
+  }
+  const inactiveMeta = document.getElementById("team-inactive-meta");
+  if (inactiveMeta) {
+    const n = (data.inactiveToday || []).length;
+    inactiveMeta.textContent = n === 0
+      ? "everyone has scanned"
+      : `${n} havent scanned`;
   }
 }
 

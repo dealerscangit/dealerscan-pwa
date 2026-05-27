@@ -64,6 +64,9 @@ function doGet(e) {
   if (action === "getHistory")      return getHistory(e);
   if (action === "getHomeOverview") return getHomeOverview(e);  // ← NEW (PWA home screen)
   if (action === "getTeamOverview") return getTeamOverview(e); // ← NEW (manager dashboard)
+  if (action === "listAnnouncements") return listAnnouncements(e);
+  if (action === "createAnnouncement") return createAnnouncement(e);
+  if (action === "deleteAnnouncement") return deleteAnnouncement(e);
   if (action === "getRegistry")     return getRegistry(e);      // ← user registry read
   if (action === "updateUser")      return updateUser(e);       // ← add/edit user (dev only)
   if (action === "deleteUser")      return deleteUser(e);       // ← deactivate user (dev only)
@@ -108,6 +111,8 @@ function doPost(e) {
   if (action === "saveConfig")  return saveDashConfigPost(e);
   if (action === "updateUser")  return updateUser(e);  // ← dev panel write
   if (action === "deleteUser")  return deleteUser(e);  // ← dev panel write
+  if (action === "createAnnouncement") return createAnnouncement(e);
+  if (action === "deleteAnnouncement") return deleteAnnouncement(e);
   return ContentService.createTextOutput("Unknown action");
 }
 
@@ -684,7 +689,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.6"); }
+function getVersion(e) { return ContentService.createTextOutput("1.7"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
@@ -1304,6 +1309,136 @@ function getTeamOverview(e) {
       teamTotalWeek: teamTotalWeek,
       searchableCustomers: searchableCustomers,
     });
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
+
+// ────────── PWA: Announcements (added 2026-05-27) ──────────
+// Manager / dev users can broadcast a short banner message to either:
+//   - everyone (audience.type === "all")
+//   - a specific list of users (audience.type === "users", audience.emails)
+//
+// Announcements expire (default 24h) and are stored in a single JSON file
+// in SYSTEM_FOLDER. Each call to listAnnouncements filters by salesperson
+// name + email so users only see ones targeted at them or "all".
+//
+// File: _DealerScan_Announcements.json
+// Shape: { items: [{ id, createdBy, createdByName, createdAt, body, audience, expiresAt }] }
+
+var ANN_FILE_NAME = "_DealerScan_Announcements.json";
+var ANN_DEFAULT_TTL_HOURS = 24;
+
+function _getAnnFile() {
+  var folder = DriveApp.getFolderById(SYSTEM_FOLDER_ID);
+  var files = folder.getFilesByName(ANN_FILE_NAME);
+  return files.hasNext() ? files.next() : null;
+}
+
+function _readAnn() {
+  var file = _getAnnFile();
+  if (!file) return { items: [] };
+  try {
+    var data = JSON.parse(file.getBlob().getDataAsString());
+    if (!data.items) data.items = [];
+    return data;
+  } catch (err) {
+    return { items: [], error: String(err) };
+  }
+}
+
+function _writeAnn(data) {
+  data.updatedAt = new Date().toISOString();
+  var json = JSON.stringify(data, null, 2);
+  var file = _getAnnFile();
+  if (file) {
+    file.setContent(json);
+  } else {
+    var folder = DriveApp.getFolderById(SYSTEM_FOLDER_ID);
+    folder.createFile(ANN_FILE_NAME, json, "application/json");
+  }
+  return data;
+}
+
+// GET ?action=listAnnouncements&salesName=Brandon&email=brandonbusler@gmail.com
+// Returns the announcements visible to the caller, expired ones already
+// filtered out. Auto-prunes the file of expired items every read so it
+// doesnt grow forever.
+function listAnnouncements(e) {
+  try {
+    var salesName = decodeURIComponent(e.parameter.salesName || "").trim();
+    var email = decodeURIComponent(e.parameter.email || "").trim().toLowerCase();
+    var data = _readAnn();
+    var now = Date.now();
+
+    // Prune expired
+    var fresh = (data.items || []).filter(function(a) {
+      return !a.expiresAt || a.expiresAt > now;
+    });
+    if (fresh.length !== (data.items || []).length) {
+      data.items = fresh;
+      _writeAnn(data);
+    }
+
+    // Filter to ones visible to this caller
+    var visible = fresh.filter(function(a) {
+      if (!a.audience || a.audience.type === "all") return true;
+      if (a.audience.type === "users") {
+        var emails = (a.audience.emails || []).map(function(s){return (s||"").toLowerCase().trim();});
+        var names  = (a.audience.names  || []).map(function(s){return (s||"").trim().toLowerCase();});
+        if (email && emails.indexOf(email) >= 0) return true;
+        if (salesName && names.indexOf(salesName.toLowerCase()) >= 0) return true;
+        return false;
+      }
+      return false;
+    });
+
+    // Newest first
+    visible.sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    return json({ items: visible });
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
+// POST ?action=createAnnouncement
+// Body: { body, audience: { type, emails?, names? }, ttlHours?, createdBy, createdByName }
+function createAnnouncement(e) {
+  try {
+    var payload = JSON.parse(e.parameter.payload || (e.postData && e.postData.contents) || "{}");
+    if (!payload.body || !payload.body.trim()) return jsonError(new Error("body required"));
+
+    var ttlHours = payload.ttlHours || ANN_DEFAULT_TTL_HOURS;
+    var record = {
+      id: "ann_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      createdBy: payload.createdBy || "",
+      createdByName: payload.createdByName || "",
+      createdAt: Date.now(),
+      body: payload.body.trim(),
+      audience: payload.audience || { type: "all" },
+      expiresAt: Date.now() + ttlHours * 3600 * 1000,
+    };
+
+    var data = _readAnn();
+    if (!data.items) data.items = [];
+    data.items.unshift(record);
+    _writeAnn(data);
+    return json({ ok: true, announcement: record });
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
+// POST ?action=deleteAnnouncement  body: { id }
+function deleteAnnouncement(e) {
+  try {
+    var payload = JSON.parse(e.parameter.payload || (e.postData && e.postData.contents) || "{}");
+    if (!payload.id) return jsonError(new Error("id required"));
+    var data = _readAnn();
+    data.items = (data.items || []).filter(function(a) { return a.id !== payload.id; });
+    _writeAnn(data);
+    return json({ ok: true });
   } catch (err) {
     return jsonError(err);
   }

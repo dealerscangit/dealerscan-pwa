@@ -24,6 +24,7 @@ import { renderDone, attachDoneHandlers } from "./screens/done.js";
 import { attachQuickMenuHandlers } from "./screens/quickMenu.js";
 import { renderDashboard, attachDashboardHandlers } from "./screens/dashboard.js";
 import { renderDevPanel, attachDevPanelHandlers } from "./screens/devPanel.js";
+import { attachAnnouncementHandlers } from "./announcements.js";
 import { loadRegistry } from "./roles.js";
 import {
   renderSettings,
@@ -222,6 +223,7 @@ window.addEventListener("DOMContentLoaded", () => {
   attachQuickMenuHandlers(showScreen, session);
   attachDashboardHandlers(showScreen, session);
   attachDevPanelHandlers(showScreen, session);
+  attachAnnouncementHandlers();
   attachCustomerHandlers(showScreen, session);
   attachCameraHandlers(showScreen, session);
   attachReviewHandlers(showScreen, session);

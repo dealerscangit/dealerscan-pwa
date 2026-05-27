@@ -1,3 +1,4 @@
+import { updateAnnouncementMenuVisibility } from "../announcements.js";
 // scripts/screens/quickMenu.js
 // Popover menu anchored to the kebab button on the home screen.
 // Opens via attachQuickMenuHandlers(showScreen, session) which wires
@@ -94,6 +95,12 @@ function handleAction(action) {
       // Mailto with prefilled subject + diagnostic info. The user's
       // mail client opens with a draft they can send to us.
       sendReport();
+      break;
+    case "announce":
+      // The button click handler (wired in announcements.js) opens the
+      // compose modal; we just need to close the menu so the modal can
+      // take focus cleanly.
+      closeMenu();
       break;
     default:
       console.warn("[quickMenu] unknown action:", action);

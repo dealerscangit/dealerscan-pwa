@@ -2196,17 +2196,59 @@ main:has([data-screen="camera"]:not([hidden])) {
 .dashboard-body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  /* Tightened from 16 to 10px so the dashboard reads as denser without
+     feeling cramped. Cards still have their own internal padding. */
+  gap: 10px;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
 .dashboard-card {
   background: var(--surface);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: 14px;
+  /* Was 14px on all sides — now 12px vertical, 14px horizontal so vertical
+     stacking feels lighter while the side margins stay roomy. */
+  padding: 12px 14px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: var(--shadow-md);
+}
+.dashboard-card-header {
+  /* Was 14px — pulled down to 10px so the header sits closer to its content. */
+  margin-bottom: 10px !important;
+}
+
+/* ── Collapsible cards (team-bars, team-recent-list, team-inactive-list)
+   Default state: collapsed. Header shows a count + chevron; tapping
+   reveals the body. State managed by .dashboard-card--collapsed class
+   on the wrapper. */
+.dashboard-card--collapsible .dashboard-card-header {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  margin-bottom: 0 !important;
+  align-items: center;
+}
+.dashboard-card--collapsible .dashboard-card-header .chev {
+  display: inline-block;
+  font-size: 14px;
+  color: var(--text-dim);
+  transition: transform var(--dur-normal) var(--ease-out-cubic);
+  margin-left: 8px;
+}
+.dashboard-card--collapsed .chev {
+  transform: rotate(-90deg);
+}
+.dashboard-card--collapsible .collapse-body {
+  max-height: 1000px;
+  overflow: hidden;
+  transition: max-height 0.32s var(--ease-out-cubic),
+              margin-top 0.18s var(--ease-out-cubic),
+              opacity 0.18s var(--ease-out-cubic);
+  margin-top: 10px;
+}
+.dashboard-card--collapsed .collapse-body {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
 }
 .dashboard-card-header {
   display: flex;
@@ -2910,4 +2952,319 @@ main:has([data-screen="camera"]:not([hidden])) {
   align-items: center;
   padding: 8px 4px;
   border-radius: var(--radius-md);
+}
+
+/* ─── Team search pill (Dashboard top-of-team-section) ──────────
+   Thin rounded search bar sitting above the team data. Looks like
+   the iOS Spotlight bar — inline magnifying glass icon, no card
+   wrapper, full-width with subtle bg. */
+.team-search-pill-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  margin-bottom: 4px;
+  transition: border-color var(--dur-fast) var(--ease-out-cubic),
+              background var(--dur-fast) var(--ease-out-cubic);
+}
+.team-search-pill-wrapper:focus-within {
+  border-color: var(--accent-soft);
+  background: rgba(255, 255, 255, 0.09);
+}
+.team-search-pill-icon {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.team-search-pill-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  padding: 0;
+  outline: none;
+  min-width: 0;
+}
+.team-search-pill-input::placeholder {
+  color: var(--text-dim);
+}
+/* Floating results card (only renders when there's something to show) */
+.team-search-results-floating {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 8px 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin-top: -2px;
+  margin-bottom: 4px;
+}
+.team-search-results-floating[hidden] { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ANNOUNCEMENTS — banner on home + compose modal
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Banner that appears at the top of home when there's a fresh
+      announcement targeted at the current user. ── */
+.announcement-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg,
+    rgba(94, 158, 255, 0.18),
+    rgba(94, 158, 255, 0.10));
+  border: 0.5px solid rgba(94, 158, 255, 0.42);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  margin: 10px 0 -2px;
+  /* Subtle entrance and exit animations driven by JS adding/removing
+     .announcement-banner--entering and .announcement-banner--leaving. */
+  animation: announcementIn 0.4s var(--ease-ios-spring);
+  position: relative;
+}
+.announcement-banner[hidden] { display: none; }
+.announcement-banner--leaving {
+  animation: announcementOut 0.32s var(--ease-out-cubic) forwards;
+}
+@keyframes announcementIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes announcementOut {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+.announcement-banner-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(94, 158, 255, 0.22);
+  color: var(--accent-soft);
+  flex-shrink: 0;
+}
+.announcement-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+.announcement-banner-from {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  margin: 0 0 1px;
+}
+.announcement-banner-text {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.35;
+  /* Truncate long announcements at 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.announcement-banner-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.announcement-banner-close:active { transform: scale(0.9); }
+
+/* ── Compose modal (manager + dev only) ── */
+.ann-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  z-index: 300;
+}
+.ann-modal[hidden] { display: none; }
+.ann-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: qmBackdropIn 0.18s var(--ease-out-cubic);
+}
+.ann-modal-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 32px);
+  max-width: 440px;
+  background: rgba(20, 50, 100, 0.95);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  box-shadow: var(--shadow-lg), 0 16px 48px rgba(0, 0, 0, 0.5);
+  animation: devModalIn 0.22s var(--ease-ios-spring);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.ann-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border);
+}
+.ann-modal-header h2 {
+  font-size: 16px;
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+.ann-modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+.ann-modal-footer {
+  padding: 14px 16px;
+  display: flex;
+  gap: 8px;
+  border-top: 0.5px solid var(--border);
+}
+
+.ann-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.ann-field-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.ann-field textarea,
+.ann-field select {
+  font: inherit;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  width: 100%;
+  resize: vertical;
+}
+.ann-field textarea {
+  min-height: 70px;
+  line-height: 1.45;
+}
+.ann-char-count {
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+/* Audience pill toggle */
+.ann-audience-toggle {
+  display: flex;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+}
+.ann-audience-toggle button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              color var(--dur-fast) var(--ease-out-cubic);
+}
+.ann-audience-toggle button.active {
+  background: rgba(90, 158, 255, 0.22);
+  color: var(--text);
+}
+
+/* User multi-select list */
+.ann-users-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px;
+}
+.ann-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ann-user-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.ann-user-row-name {
+  font-size: 13px;
+  color: var(--text);
+}
+.ann-user-row-role {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.ann-user-row.checked {
+  background: rgba(90, 158, 255, 0.12);
 }

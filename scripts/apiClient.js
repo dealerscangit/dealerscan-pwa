@@ -230,3 +230,37 @@ export async function getTeamOverview() {
   if (!res.ok) throw new Error(`getTeamOverview HTTP ${res.status}`);
   return await res.json();
 }
+
+
+// ────────── Announcements (manager + dev compose, all read) ──────────
+
+export async function listAnnouncements(salesName, email = "") {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "listAnnouncements");
+  if (salesName) url.searchParams.set("salesName", salesName);
+  if (email) url.searchParams.set("email", email);
+  const res = await fetch(url.toString(), { method: "GET" });
+  if (!res.ok) throw new Error(`listAnnouncements HTTP ${res.status}`);
+  return await res.json();
+}
+
+export async function createAnnouncement(payload) {
+  // payload: { body, audience: { type, emails?, names? }, ttlHours?, createdBy, createdByName }
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "createAnnouncement");
+  const formData = new FormData();
+  formData.set("payload", JSON.stringify(payload));
+  const res = await fetch(url.toString(), { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`createAnnouncement HTTP ${res.status}`);
+  return await res.json();
+}
+
+export async function deleteAnnouncement(id) {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "deleteAnnouncement");
+  const formData = new FormData();
+  formData.set("payload", JSON.stringify({ id }));
+  const res = await fetch(url.toString(), { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`deleteAnnouncement HTTP ${res.status}`);
+  return await res.json();
+}
