@@ -20,7 +20,17 @@ import { renderCamera, attachCameraHandlers } from "./screens/camera.js";
 import { renderReview, attachReviewHandlers } from "./screens/review.js";
 import { renderUpload, attachUploadHandlers } from "./screens/upload.js";
 import { renderDone, attachDoneHandlers } from "./screens/done.js";
+import {
+  renderSettings,
+  attachSettingsHandlers,
+  applySettingsOnBoot,
+} from "./screens/settings.js";
 import "./errorReporter.js"; // side-effect: installs global window error handlers
+import { checkBackendVersion } from "./versionCheck.js";
+
+// Apply saved accent + behavior settings before any screen renders so the
+// initial paint uses the user's chosen accent color (no flash of default blue).
+applySettingsOnBoot();
 
 // ───────────────────────────────────────────────────────────
 // Shared session state
@@ -61,6 +71,10 @@ if (localStorage.getItem("ds.debug") === "1") {
   console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() || "(none)");
 }
 
+// Fire-and-forget backend version check — logs mismatches to the event log
+// so we notice when a deploy is stale. See scripts/versionCheck.js.
+setTimeout(checkBackendVersion, 2000);
+
 // ───────────────────────────────────────────────────────────
 // Screen routing
 // ───────────────────────────────────────────────────────────
@@ -72,7 +86,7 @@ const SCREEN_RENDERERS = {
   review:   renderReview,
   upload:   renderUpload,
   done:     renderDone,
-  settings: () => {},  // stub — full settings screen builds in step 5
+  settings: renderSettings,
 };
 
 export function showScreen(id) {
@@ -128,6 +142,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // One-time wiring (event listeners that don't change between renders)
   attachSigninHandlers(showScreen);
   attachHomeHandlers(showScreen, session);
+  attachSettingsHandlers(showScreen, session);
   attachCustomerHandlers(showScreen, session);
   attachCameraHandlers(showScreen, session);
   attachReviewHandlers(showScreen, session);

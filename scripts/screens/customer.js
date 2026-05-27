@@ -6,6 +6,7 @@ import { getCustomerHistory, hideCustomer, unhideCustomer } from "../apiClient.j
 import { getCachedHistory, invalidateHistoryCache } from "./home.js";
 import { makeSwipeable, showToast } from "../swipeActions.js";
 import { titleCaseName } from "../textCase.js";
+import { readSettings } from "./settings.js";
 import { reportError } from "../errorReporter.js";
 
 let _showScreen = null;
@@ -20,6 +21,8 @@ export function attachCustomerHandlers(showScreen, session) {
   const newBtn = document.getElementById("btn-new-customer");
   const echo = document.getElementById("new-customer-name-echo");
 
+  const clearBtn = document.getElementById("customer-input-clear");
+
   if (input) {
     input.addEventListener("input", () => {
       const q = input.value.trim();
@@ -31,7 +34,21 @@ export function attachCustomerHandlers(showScreen, session) {
       if (newBtn) newBtn.hidden = !shouldShow;
       // Show the title-cased preview in the "+ Use as new customer" button
       // so the user sees exactly how the name will be stored.
-      if (echo) echo.textContent = titleCaseName(q);
+      if (echo) echo.textContent = readSettings().titleCaseEnabled ? titleCaseName(q) : q;
+      // Show the clear-X button only when there's text to clear
+      if (clearBtn) clearBtn.hidden = q.length === 0;
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      if (!input) return;
+      input.value = "";
+      clearBtn.hidden = true;
+      if (newBtn) newBtn.hidden = true;
+      // Trigger paint with empty query, then refocus the input
+      filterAndPaint("");
+      input.focus();
     });
   }
 
@@ -41,7 +58,7 @@ export function attachCustomerHandlers(showScreen, session) {
       if (!typed) return;
       // Title-case before sending to backend so folder names are consistent:
       // "smith family" → "Smith Family" matches what the extension creates.
-      _session.customerName = titleCaseName(typed);
+      _session.customerName = readSettings().titleCaseEnabled ? titleCaseName(typed) : typed;
       _session.isNewCustomer = true;
       _showScreen("camera");
     });
@@ -51,8 +68,10 @@ export function attachCustomerHandlers(showScreen, session) {
 export async function renderCustomer() {
   const input = document.getElementById("customer-input");
   const newBtn = document.getElementById("btn-new-customer");
+  const clearBtn = document.getElementById("customer-input-clear");
   if (input) input.value = "";
   if (newBtn) newBtn.hidden = true;
+  if (clearBtn) clearBtn.hidden = true;
 
   // Use cached history if available; refresh in background
   const cached = getCachedHistory();

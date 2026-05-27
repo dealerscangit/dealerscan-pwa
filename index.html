@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=23" />
+  <link rel="stylesheet" href="styles/main.css?v=24" />
 </head>
 <body>
   <main>
@@ -119,7 +119,12 @@
       </header>
 
       <div class="search-wrap">
-        <input id="customer-input" type="text" placeholder="Type customer name…" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" />
+        <div class="search-input-wrap">
+          <input id="customer-input" type="text" placeholder="Type customer name…" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" />
+          <button class="search-clear" id="customer-input-clear" type="button" aria-label="Clear" hidden>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
 
         <!-- Inline "use as new" CTA — appears immediately under the input when
              typed text doesn't match an existing customer. Sits where the
@@ -247,7 +252,7 @@
          SCREEN 7: done
          ───────────────────────────────────────────── -->
     <!-- ─────────────────────────────────────────────
-         SCREEN: settings (minimal scaffold; filled in step 5)
+         SCREEN: settings
          ───────────────────────────────────────────── -->
     <section data-screen="settings" hidden>
       <header class="screen-header">
@@ -256,8 +261,104 @@
         </button>
         <h1>Settings</h1>
       </header>
+
       <div class="settings-body">
-        <p class="muted" style="text-align: center; padding: 40px 16px;">Settings coming soon.</p>
+
+        <!-- ── Visual ──────────────────────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">Appearance</p>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Accent color</p>
+              <p class="settings-row-sub">Used for buttons and highlights</p>
+            </div>
+          </div>
+          <div class="accent-swatches" id="accent-swatches">
+            <button class="accent-swatch" data-accent="blue"   aria-label="Blue"   style="background: linear-gradient(135deg, #5a9eff, #2b6ed4);"></button>
+            <button class="accent-swatch" data-accent="purple" aria-label="Purple" style="background: linear-gradient(135deg, #a78bfa, #7c3aed);"></button>
+            <button class="accent-swatch" data-accent="teal"   aria-label="Teal"   style="background: linear-gradient(135deg, #5eead4, #14b8a6);"></button>
+            <button class="accent-swatch" data-accent="amber"  aria-label="Amber"  style="background: linear-gradient(135deg, #fbbf24, #d97706);"></button>
+            <button class="accent-swatch" data-accent="rose"   aria-label="Rose"   style="background: linear-gradient(135deg, #fb7185, #e11d48);"></button>
+          </div>
+        </div>
+
+        <!-- ── Behavioral ─────────────────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">Behavior</p>
+
+          <label class="settings-row settings-row-toggle">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Haptic feedback</p>
+              <p class="settings-row-sub">Buzz on capture and important actions</p>
+            </div>
+            <span class="toggle">
+              <input type="checkbox" id="toggle-haptics" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+
+          <label class="settings-row settings-row-toggle">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Auto-advance nudge</p>
+              <p class="settings-row-sub">Pulse the Review button after each capture</p>
+            </div>
+            <span class="toggle">
+              <input type="checkbox" id="toggle-nudge" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+
+          <label class="settings-row settings-row-toggle">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Title-case customer names</p>
+              <p class="settings-row-sub">Convert "smith family" to "Smith Family"</p>
+            </div>
+            <span class="toggle">
+              <input type="checkbox" id="toggle-titlecase" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+        </div>
+
+        <!-- ── Account ────────────────────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">Account</p>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Signed in as</p>
+              <p class="settings-row-sub" id="settings-current-user">—</p>
+            </div>
+          </div>
+
+          <button class="settings-row settings-row-button" id="settings-switch-user" type="button">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Switch user</p>
+              <p class="settings-row-sub">Sign out and pick a different salesperson</p>
+            </div>
+            <svg class="settings-row-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+
+        <!-- ── About ──────────────────────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">About</p>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Version</p>
+              <p class="settings-row-sub" id="settings-version">DealerScan PWA · 1.0</p>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Backend</p>
+              <p class="settings-row-sub" id="settings-backend-version">checking…</p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -278,6 +379,6 @@
 
   </main>
 
-  <script type="module" src="scripts/app.js?v=23"></script>
+  <script type="module" src="scripts/app.js?v=24"></script>
 </body>
 </html>

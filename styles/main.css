@@ -1573,3 +1573,192 @@ main:has([data-screen="camera"]:not([hidden])) {
   transform: scale(0.94);
   background: var(--surface-hover);
 }
+
+/* ── Done button nudge: subtle pulse after each capture ─────────
+   Triggered from camera.js after a successful photo capture. The
+   pulse is brief and the glow expands without scaling the button
+   itself (which would mess with the bottom-row grid). */
+@keyframes doneButtonNudge {
+  0%   { box-shadow: 0 6px 18px var(--primary-glow); }
+  35%  { box-shadow: 0 8px 28px rgba(231, 69, 96, 0.7), 0 0 0 6px rgba(231, 69, 96, 0.1); }
+  100% { box-shadow: 0 6px 18px var(--primary-glow); }
+}
+.camera-done-btn.nudge {
+  animation: doneButtonNudge 0.6s var(--ease-out-cubic);
+}
+
+/* ── Clear-X button inside the customer search input ──────────── */
+.search-input-wrap {
+  position: relative;
+}
+.search-input-wrap input {
+  padding-right: 40px;  /* leave room for the clear button */
+}
+.search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              opacity var(--dur-fast) var(--ease-out-cubic);
+}
+.search-clear:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SETTINGS SCREEN
+   Section labels + rows + toggles + accent swatches.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-section-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0 0 8px 4px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: background var(--dur-fast) var(--ease-out-cubic);
+}
+.settings-row + .settings-row { margin-top: 2px; }
+.settings-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.settings-row-title {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 500;
+}
+.settings-row-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 2px 0 0;
+}
+.settings-row-button {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+}
+.settings-row-button:active {
+  background: var(--surface-hover);
+}
+.settings-row-chev {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+/* ── Toggle switch ─────────────────────────────────────────────── */
+.settings-row-toggle {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.toggle {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.toggle-track {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 26px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background var(--dur-normal) var(--ease-out-cubic);
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform var(--dur-normal) var(--ease-ios-spring);
+}
+.toggle input:checked + .toggle-track {
+  background: var(--accent);
+}
+.toggle input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(18px);
+}
+
+/* ── Accent color swatches ─────────────────────────────────────── */
+.accent-swatches {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  justify-content: space-between;
+}
+.accent-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex: 1;
+  max-width: 52px;
+  transition: transform var(--dur-fast) var(--ease-out-cubic),
+              border-color var(--dur-fast) var(--ease-out-cubic),
+              box-shadow var(--dur-normal) var(--ease-out-cubic);
+}
+.accent-swatch:active { transform: scale(0.92); }
+.accent-swatch.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2),
+              0 4px 12px rgba(0, 0, 0, 0.3);
+}

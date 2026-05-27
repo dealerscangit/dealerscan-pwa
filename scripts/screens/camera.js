@@ -1,4 +1,5 @@
 import { reportError } from "../errorReporter.js";
+import { readSettings } from "./settings.js";
 // scripts/screens/camera.js
 // Screen 4: real camera capture using getUserMedia + canvas.
 //
@@ -193,6 +194,11 @@ async function handleShutter() {
     const dataUrl = grabAndEncode(video, canvas);
     addPhotoToSession(dataUrl);
     paintCountAndThumb();
+    // Auto-advance nudge: after the first capture, pulse the Review button
+    // briefly so the user notices they can leave at any time. Subsequent
+    // captures get smaller, less attention-grabbing nudges.
+    if (readSettings().nudgeEnabled) nudgeDoneButton();
+    if (readSettings().hapticsEnabled) tryHapticBuzz();
   } catch (err) {
     console.error("[camera] capture failed:", err);
   } finally {
@@ -236,6 +242,33 @@ function addPhotoToSession(dataUrl) {
     filename: `scan-${String(n).padStart(2, "0")}.jpg`,
     status: "pending",
   });
+}
+
+function tryHapticBuzz() {
+  // Best-effort haptic feedback on capture. Not all browsers/devices support
+  // vibrate() — iOS Safari notably ignores it. Silent no-op when unsupported.
+  if (typeof navigator.vibrate === "function") {
+    try { navigator.vibrate(15); } catch {}
+  }
+}
+
+function nudgeDoneButton() {
+  // Auto-advance hint: after every capture, briefly draw the user's eye to
+  // the Done button via a CSS class that triggers a one-shot pulse animation.
+  // The animation self-removes when it ends (animationend listener).
+  const done = document.getElementById("btn-camera-done");
+  if (!done) return;
+  // Restart the animation by removing & re-adding the class on next frame.
+  done.classList.remove("nudge");
+  // Force reflow so the removal takes effect before re-adding
+  // eslint-disable-next-line no-unused-expressions
+  void done.offsetWidth;
+  done.classList.add("nudge");
+  const onEnd = () => {
+    done.classList.remove("nudge");
+    done.removeEventListener("animationend", onEnd);
+  };
+  done.addEventListener("animationend", onEnd);
 }
 
 function paintCountAndThumb() {

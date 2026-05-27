@@ -639,7 +639,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.0"); }
+function getVersion(e) { return ContentService.createTextOutput("1.1"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
