@@ -105,6 +105,8 @@ function doPost(e) {
   if (action === "uploadPhoto") return uploadPhoto(e);
   if (action === "logUpload")   return json(logUpload(data));
   if (action === "saveConfig")  return saveDashConfigPost(e);
+  if (action === "updateUser")  return updateUser(e);  // ← dev panel write
+  if (action === "deleteUser")  return deleteUser(e);  // ← dev panel write
   return ContentService.createTextOutput("Unknown action");
 }
 
@@ -681,7 +683,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.3"); }
+function getVersion(e) { return ContentService.createTextOutput("1.4"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
