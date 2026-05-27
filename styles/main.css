@@ -525,7 +525,10 @@ main:has([data-screen="camera"]:not([hidden])) {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 16px 14px 0;
+  /* The camera screen is full-bleed (main strips its padding when this
+     screen is active), so the safe-area-inset-top must be applied right
+     here or the X cancel + customer chip would sit under the iOS notch. */
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 0;
 }
 .camera-chrome-btn {
   background: rgba(0, 0, 0, 0.55);
@@ -604,6 +607,7 @@ main:has([data-screen="camera"]:not([hidden])) {
   grid-template-columns: 76px 1fr 76px;
   align-items: center;
   padding: 14px 18px 26px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   gap: 12px;
 }
 
@@ -1421,8 +1425,11 @@ main:has([data-screen="camera"]:not([hidden])) {
 .timeline {
   position: relative;
   padding-left: 18px;
-  margin-bottom: 22px;
+  margin-bottom: clamp(14px, 2.4vh, 22px);
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .timeline::before {
   content: "";
@@ -1443,7 +1450,6 @@ main:has([data-screen="camera"]:not([hidden])) {
 
 .timeline-row {
   position: relative;
-  margin-bottom: 10px;
   animation: timelineFadeIn var(--dur-normal) var(--ease-out-cubic) backwards;
 }
 .timeline-row:nth-child(1) { animation-delay: 0.02s; }
@@ -1841,4 +1847,17 @@ main:has([data-screen="camera"]:not([hidden])) {
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+
+/* Suppress iOS text selection / callout menus on the camera screen.
+   The "Sketch" / "Look Up" / "Translate" menus that iOS Safari shows
+   when text is tapped are not relevant here and looked broken in the
+   field — none of the camera UI text is meant to be selected. */
+.camera-stage,
+.camera-stage * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
