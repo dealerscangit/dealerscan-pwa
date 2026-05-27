@@ -86,13 +86,10 @@
 
 html {
   margin: 0; padding: 0;
-  /* Use lvh (large viewport height) which is ALWAYS the full screen
-     including under the home indicator. dvh resolves to the visible
-     viewport in iOS PWA standalone, leaving the home indicator strip
-     showing the OS default bg — visible as a faint band. */
+  /* Solid bg-bottom (was gradient) to ensure the home indicator zone
+     matches the page bg exactly with no visible color boundary. */
   min-height: 100%;
   min-height: 100lvh;
-  background: var(--bg-gradient);
   background-color: var(--bg-bottom);
   overscroll-behavior-y: none;
 }
@@ -120,18 +117,19 @@ body {
 }
 body::before {
   content: '';
-  /* Fixed gradient layer behind all content. Uses lvh (large viewport
-     height — always the maximum possible) so it covers the home indicator
-     zone. dvh would resolve to the visible viewport in iOS PWA standalone,
-     leaving the home indicator strip uncovered. lvh fixes the persistent
-     "thin darker band at the bottom" bug for good. */
+  /* SOLID NAVY backstop covering the entire screen including the home
+     indicator zone. Was a gradient; the gradient was causing a visible
+     boundary between the dvh content viewport and the lvh background
+     viewport, showing up as a thin darker band right at the home
+     indicator. Solid color eliminates the boundary entirely.
+     If we want the gradient back later we can layer it inside body,
+     not on this backstop layer. */
   position: fixed;
   top: 0; left: 0; right: 0;
   width: 100%;
   height: 100vh;
   height: 100lvh;
-  background: var(--bg-gradient);
-  background-color: var(--bg-bottom);
+  background: var(--bg-bottom);
   z-index: -1;
   pointer-events: none;
 }
