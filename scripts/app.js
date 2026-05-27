@@ -5,6 +5,7 @@ import {
   createCustomerFolder,
   uploadPhoto,
   getCustomerHistory,
+  getHomeOverview,
 } from "./apiClient.js";
 import {
   SALESPEOPLE,
@@ -32,9 +33,10 @@ import {
 import "./errorReporter.js"; // side-effect: installs global window error handlers
 import { checkBackendVersion } from "./versionCheck.js";
 import { processQueue, count as queueCount } from "./offlineQueue.js";
-import { getHomeOverview } from "./apiClient.js";
 import { getOrFetch } from "./dataCache.js";
-import { getCurrentSalesperson } from "./currentUser.js";
+// Note: getHomeOverview and getCurrentSalesperson are imported above via
+// other import statements; do not re-import here or we get duplicate-
+// identifier syntax errors and the whole module fails to load (blank screen).
 
 // Apply saved accent + behavior settings before any screen renders so the
 // initial paint uses the user's chosen accent color (no flash of default blue).
