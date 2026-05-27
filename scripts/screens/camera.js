@@ -87,6 +87,17 @@ async function startCamera() {
     return;
   }
 
+  // iOS PWA standalone mode notoriously resets camera permission across
+  // page loads. Check if we've previously been granted (hint flag in
+  // localStorage) and show a brief "preparing camera..." overlay if so,
+  // since the prompt won't appear and the user might wonder why it's blank.
+  // If we haven't been granted before, the OS prompt will appear naturally
+  // and we don't need extra UI.
+  const previouslyGranted = localStorage.getItem("ds.camera.granted") === "1";
+  if (previouslyGranted) {
+    showPreparing();
+  }
+
   try {
     _stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -96,6 +107,10 @@ async function startCamera() {
       },
       audio: false,
     });
+    // Persist the "was once granted" flag so future loads show a loading
+    // hint instead of looking broken during the silent re-permission.
+    try { localStorage.setItem("ds.camera.granted", "1"); } catch {}
+    hidePreparing();
 
     // CRITICAL: hide the fallback BEFORE attaching srcObject. If the user
     // is mid-retry, the fallback overlay might still be visible from the
@@ -108,10 +123,15 @@ async function startCamera() {
     // fires when the video actually has frame data ready to render.
     video.addEventListener("loadedmetadata", () => {
       hideFallback();
-      // Fade the video in only once it's ready to render real frames.
-      // Without this, iOS shows the element at its intrinsic 0x0 size
-      // for a beat before snapping to full screen — looks like a stutter.
-      video.classList.add("ready");
+      hidePreparing();
+      // Fade in on next animation frame so the layout has settled and the
+      // first real frame is in the buffer. Without rAF, .ready could be
+      // applied before the GPU has the frame, causing a brief blank flash.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          video.classList.add("ready");
+        });
+      });
     }, { once: true });
 
     // iOS Safari sometimes throws on play() if the user hasn't interacted yet,
@@ -127,7 +147,13 @@ async function startCamera() {
     // Final hideFallback after everything settles
     hideFallback();
   } catch (err) {
+    hidePreparing();
     console.warn("[camera] getUserMedia failed:", err);
+    // If permission was denied, clear the hint flag so we don't show
+    // the loading overlay next time (which would be misleading).
+    if (err?.name === "NotAllowedError") {
+      try { localStorage.removeItem("ds.camera.granted"); } catch {}
+    }
     reportError(
       err?.name === "NotAllowedError" ? "cameraPermissionDenied" : "cameraStartFailed",
       { error: err }
@@ -242,6 +268,27 @@ function addPhotoToSession(dataUrl) {
     filename: `scan-${String(n).padStart(2, "0")}.jpg`,
     status: "pending",
   });
+}
+
+function showPreparing() {
+  let el = document.getElementById("camera-preparing");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "camera-preparing";
+    el.className = "camera-preparing";
+    el.innerHTML = `
+      <div class="camera-preparing-spinner" aria-hidden="true"></div>
+      <p class="camera-preparing-label">Preparing camera…</p>
+    `;
+    const stage = document.querySelector(".camera-stage") || document.body;
+    stage.appendChild(el);
+  }
+  el.hidden = false;
+}
+
+function hidePreparing() {
+  const el = document.getElementById("camera-preparing");
+  if (el) el.hidden = true;
 }
 
 function tryHapticBuzz() {

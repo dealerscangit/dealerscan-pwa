@@ -92,7 +92,7 @@ html {
 }
 body {
   margin: 0; padding: 0;
-  min-height: 100vh; min-height: 100dvh;
+  height: 100vh; height: 100dvh;
   background: transparent;
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
@@ -101,8 +101,11 @@ body {
   overscroll-behavior-y: none;
   display: flex; flex-direction: column;
   position: relative;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Safe area insets handled per-screen — body itself does NOT pad them,
+     because each screen's chrome already accounts for its own top/bottom
+     safe area. Padding here was double-counting and pushing content way
+     down on notched iPhones. Left/right insets still applied here since
+     they're universal and never doubled. */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
@@ -116,7 +119,13 @@ body::before {
 }
 main {
   flex: 1; display: flex; flex-direction: column;
-  padding: 1.5rem 1.25rem 1.25rem; min-height: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 1.5rem) 1.25rem 1.25rem;
+  min-height: 0;
+}
+/* When the home screen is active, main strips its top padding because
+   the status strip handles the safe area itself. */
+main:has([data-screen="home"]:not([hidden])) {
+  padding: 0;
 }
 
 /* ────────────────────────────────────────
@@ -154,12 +163,21 @@ input[type="text"], input[type="search"] {
   border: 0.5px solid var(--border);
   background: var(--surface-strong);
   color: var(--text);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: 16px 16px;
   outline: none;
   font-size: 17px;
   -webkit-appearance: none; appearance: none;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur-fast) var(--ease-out-cubic),
+              background var(--dur-fast) var(--ease-out-cubic),
+              box-shadow var(--dur-normal) var(--ease-out-cubic);
+}
+input:focus {
+  border-color: var(--accent-soft);
+  box-shadow: var(--shadow-md), 0 0 0 2px rgba(90, 158, 255, 0.18);
 }
 input::placeholder { color: var(--text-faint); }
 input:focus { border-color: var(--border-strong); background: var(--surface-hover); }
@@ -313,13 +331,16 @@ input:focus { border-color: var(--border-strong); background: var(--surface-hove
   display: flex; align-items: center; gap: 14px;
   background: var(--surface);
   border: 0.5px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 16px;
+  border-radius: var(--radius-lg);
+  padding: 14px 14px;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   font: inherit; color: var(--text); text-align: left;
   width: 100%;
-  transition: background 0.15s ease, transform 0.1s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: background var(--dur-fast) var(--ease-out-cubic), transform var(--dur-fast) var(--ease-out-cubic);
   animation: rowFadeIn 0.2s ease-out backwards;
+  box-shadow: var(--shadow-sm);
 }
 .recent-item:active { background: var(--surface-active); transform: scale(0.99); }
 .recent-item:nth-child(1) { animation-delay: 0ms; }
@@ -464,12 +485,18 @@ main:has([data-screen="camera"]:not([hidden])) {
   height: 100%;
   object-fit: cover;
   background: #000;
-  /* iOS stutter fix: until the video has loaded metadata + a real frame,
-     the <video> element's intrinsic size is 0x0 and it briefly renders
-     scaled-down before snapping to full size. Keep it visually hidden
-     under a solid black layer until JS adds `.ready` after loadedmetadata. */
+  /* iOS stutter fix v2: force the element into its final layout dimensions
+     immediately by using min-width/min-height on the intrinsic size, and
+     keep object-fit: cover so any frame size renders correctly. The element
+     is invisible until .ready fires, so a black stage covers the intrinsic
+     0x0 phase entirely. */
+  min-width: 100%;
+  min-height: 100%;
+  display: block;
   opacity: 0;
-  transition: opacity 0.28s ease;
+  transform: scale(1);
+  transition: opacity 0.32s var(--ease-out-cubic, ease);
+  will-change: opacity;
 }
 .camera-video.ready {
   opacity: 1;
@@ -1157,14 +1184,24 @@ main:has([data-screen="camera"]:not([hidden])) {
   padding: 0 !important;
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  /* Use dvh so the screen always fills the actual viewport on any iPhone
+     model, including ones with different notch / dynamic-island sizes,
+     and adapts when the browser chrome shows/hides. */
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .home-body {
   flex: 1 1 auto;
-  padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 22px);
+  padding: clamp(14px, 3vh, 22px) 16px calc(env(safe-area-inset-bottom, 0px) + clamp(16px, 3vh, 22px));
   display: flex;
   flex-direction: column;
+  /* Cap the body content width on landscape / large screens so it doesn't
+     get unreadably wide. Mobile devices are well under 500px so this is
+     a no-op there; only matters if someone resizes a desktop browser. */
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* ── Status strip ──────────────────────────────────────────────── */
@@ -1172,8 +1209,9 @@ main:has([data-screen="camera"]:not([hidden])) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 18px;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  /* Real top padding: safe-area-inset + 8px breathing room. Since body
+     no longer adds the safe area, this is the single source of truth. */
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 18px 8px;
   background: rgba(255, 255, 255, 0.04);
   border-bottom: 0.5px solid var(--border);
   backdrop-filter: blur(20px);
@@ -1237,10 +1275,10 @@ main:has([data-screen="camera"]:not([hidden])) {
   background: var(--surface-strong);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: 14px;
+  padding: clamp(12px, 1.8vh, 16px) 14px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  margin-bottom: 18px;
+  margin-bottom: clamp(12px, 2vh, 18px);
   box-shadow: var(--shadow-md);
 }
 .profile-card-avatar {
@@ -1308,7 +1346,7 @@ main:has([data-screen="camera"]:not([hidden])) {
   border-radius: var(--radius-lg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  margin-bottom: 22px;
+  margin-bottom: clamp(14px, 2.4vh, 22px);
 }
 .counter-pill {
   flex: 1;
@@ -1761,4 +1799,46 @@ main:has([data-screen="camera"]:not([hidden])) {
   border-color: #fff;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2),
               0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Camera "preparing" overlay ─────────────────────────────────
+   Shown during the brief window when getUserMedia is reacquiring a
+   previously-granted permission (iOS PWA standalone mode re-prompts
+   silently sometimes). Without this, the user sees a black screen
+   for ~300ms and wonders if it's broken. */
+.camera-preparing {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(13, 38, 84, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  animation: fadeIn 0.15s var(--ease-out-cubic);
+}
+.camera-preparing-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--accent-soft);
+  border-radius: 50%;
+  animation: cameraSpin 0.9s linear infinite;
+}
+.camera-preparing-label {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+@keyframes cameraSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }

@@ -100,25 +100,75 @@ export async function unhideCustomer(salesName, customerName) {
 
 
 /**
- * Get all data needed by the redesigned PWA home screen in a single round trip.
- * Returns { today, week, total, timeline: [{ customer, timestamp, photoCount, folderId }, ...] }.
+ * Get all data needed by the redesigned PWA home screen.
  *
- * Requires Apps Script deployment to include the `getHomeOverview` action
- * (added 2026-05-26). If the deployment is stale, returns empty zeros so
- * the UI degrades gracefully.
+ * Tries the new single-round-trip getHomeOverview endpoint first.
+ * If the backend hasn't been redeployed yet (returns "Unknown action"
+ * as plain text instead of JSON), falls back to getHistory and
+ * synthesizes the structure with whatever data is available.
+ *
+ * Returns { today, week, total, timeline: [{ customer, timestamp, photoCount, folderId }, ...] }.
  */
 export async function getHomeOverview(salesName) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "getHomeOverview");
   url.searchParams.set("salesName", salesName);
-  const res = await fetch(url.toString(), { method: "GET" });
-  if (!res.ok) throw new Error(`getHomeOverview HTTP ${res.status}`);
-  const data = await res.json();
-  if (data.error) throw new Error(`getHomeOverview: ${data.error}`);
+  try {
+    const res = await fetch(url.toString(), { method: "GET" });
+    if (!res.ok) throw new Error(`getHomeOverview HTTP ${res.status}`);
+    const text = await res.text();
+    // The backend either returns JSON (new endpoint) or "Unknown action"
+    // text (stale deployment). Detect and fall back accordingly.
+    if (text.trim().startsWith("Unknown")) {
+      return await fallbackHomeOverview(salesName);
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // Non-JSON response — backend is stale, fall back gracefully.
+      return await fallbackHomeOverview(salesName);
+    }
+    if (data.error) throw new Error(`getHomeOverview: ${data.error}`);
+    return {
+      today: data.today || 0,
+      week: data.week || 0,
+      total: data.total || 0,
+      timeline: Array.isArray(data.timeline) ? data.timeline : [],
+    };
+  } catch (err) {
+    // If anything threw (network, parse, etc.), try the fallback as a last
+    // resort before giving up. Better stale data than no data.
+    try {
+      return await fallbackHomeOverview(salesName);
+    } catch {
+      throw err;
+    }
+  }
+}
+
+/**
+ * Fallback: synthesize a home-overview-shaped object using only the legacy
+ * getHistory endpoint, which is guaranteed to exist on every deployed
+ * version of the backend. Counts are approximate (we get a list of recent
+ * customer NAMES but not timestamps), so today/week/total all equal the
+ * count of returned names. Timeline timestamps are stamped as "now" since
+ * we have no real ones. This is a degraded experience but better than blank.
+ */
+async function fallbackHomeOverview(salesName) {
+  const names = await getCustomerHistory(salesName);
+  const real = names.filter((n) => n && n !== "New Customer");
+  const now = new Date().toISOString();
+  const timeline = real.slice(0, 5).map((customer) => ({
+    customer,
+    timestamp: now,
+    photoCount: 0,
+    folderId: "",
+  }));
   return {
-    today: data.today || 0,
-    week: data.week || 0,
-    total: data.total || 0,
-    timeline: Array.isArray(data.timeline) ? data.timeline : [],
+    today: real.length,
+    week: real.length,
+    total: real.length,
+    timeline,
   };
 }

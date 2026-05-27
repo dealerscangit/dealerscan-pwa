@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+
+  <!-- Preconnect to Apps Script so the first API call doesn't pay the TCP+TLS cost.
+       Saves ~100-300ms on cold network depending on connection quality. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin />
+  <link rel="dns-prefetch" href="https://script.google.com" />
   <meta name="theme-color" content="#1a5296" />
   <title>DealerScan</title>
 
@@ -13,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=24" />
+  <link rel="stylesheet" href="styles/main.css?v=25" />
 </head>
 <body>
   <main>
@@ -379,6 +384,6 @@
 
   </main>
 
-  <script type="module" src="scripts/app.js?v=24"></script>
+  <script type="module" src="scripts/app.js?v=25"></script>
 </body>
 </html>
