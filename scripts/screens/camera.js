@@ -1,3 +1,4 @@
+import { reportError } from "../errorReporter.js";
 // scripts/screens/camera.js
 // Screen 4: real camera capture using getUserMedia + canvas.
 //
@@ -126,6 +127,10 @@ async function startCamera() {
     hideFallback();
   } catch (err) {
     console.warn("[camera] getUserMedia failed:", err);
+    reportError(
+      err?.name === "NotAllowedError" ? "cameraPermissionDenied" : "cameraStartFailed",
+      { error: err }
+    );
     if (err?.name === "NotAllowedError") {
       showFallback("Camera permission was denied. Enable it in Settings → Safari → Camera, or pick from your library.");
     } else if (err?.name === "NotFoundError" || err?.name === "OverconstrainedError") {
@@ -254,7 +259,10 @@ function paintCountAndThumb() {
   }
 
   if (done) done.disabled = n === 0;
-  if (doneLabel) doneLabel.textContent = n === 0 ? "Done" : `Done (${n})`;
+  // "Review (N)" is clearer than "Done (N)" — tapping this button goes
+  // to the review screen, not actually-done-with-the-upload. Sage's UX
+  // call: don't imply success that hasn't happened yet.
+  if (doneLabel) doneLabel.textContent = n === 0 ? "Review" : `Review (${n})`;
 }
 
 // ────────────────────────────────────────────────

@@ -950,22 +950,32 @@ main:has([data-screen="camera"]:not([hidden])) {
 }
 
 /* ────────────────────────────────────────
-   DEV-only Sign out
+   Home screen meta footer (Switch user, etc.)
+   Sits above the version label as proper UI rather than scaffolding.
    ──────────────────────────────────────── */
-.dev-footer {
+.home-meta-footer {
   padding: 0.5rem 0 0;
-  display: flex; justify-content: center; flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
 }
-.text-link {
-  background: transparent; border: none;
-  color: var(--text-faint); font: inherit; font-size: 12px;
-  padding: 8px 12px; cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: var(--text-ghost);
-  text-underline-offset: 3px;
+.meta-action {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
 }
-.text-link:active { color: var(--text-dim); }
+.meta-action:active {
+  color: var(--text);
+  background: var(--surface);
+}
 
 /* ────────────────────────────────────────
    Swipe-to-reveal actions (iOS Mail style)

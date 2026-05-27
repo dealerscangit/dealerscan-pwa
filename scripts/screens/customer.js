@@ -5,6 +5,8 @@ import { getCurrentSalesperson } from "../currentUser.js";
 import { getCustomerHistory, hideCustomer, unhideCustomer } from "../apiClient.js";
 import { getCachedHistory, invalidateHistoryCache } from "./home.js";
 import { makeSwipeable, showToast } from "../swipeActions.js";
+import { titleCaseName } from "../textCase.js";
+import { reportError } from "../errorReporter.js";
 
 let _showScreen = null;
 let _session = null;
@@ -27,7 +29,9 @@ export function attachCustomerHandlers(showScreen, session) {
       );
       const shouldShow = q.length > 0 && !matchesExisting;
       if (newBtn) newBtn.hidden = !shouldShow;
-      if (echo) echo.textContent = q;
+      // Show the title-cased preview in the "+ Use as new customer" button
+      // so the user sees exactly how the name will be stored.
+      if (echo) echo.textContent = titleCaseName(q);
     });
   }
 
@@ -35,7 +39,9 @@ export function attachCustomerHandlers(showScreen, session) {
     newBtn.addEventListener("click", () => {
       const typed = (input?.value || "").trim();
       if (!typed) return;
-      _session.customerName = typed;
+      // Title-case before sending to backend so folder names are consistent:
+      // "smith family" → "Smith Family" matches what the extension creates.
+      _session.customerName = titleCaseName(typed);
       _session.isNewCustomer = true;
       _showScreen("camera");
     });
@@ -62,6 +68,7 @@ export async function renderCustomer() {
       paintRecentList(_allCustomers);
     } catch (err) {
       console.error("[customer] getCustomerHistory failed:", err);
+      reportError("getHistoryFailed", { error: err });
       paintError();
     }
   }
@@ -168,6 +175,7 @@ async function handleRemove(name) {
     await hideCustomer(sp, name);
   } catch (err) {
     console.error("[customer] hideCustomer failed, restoring:", err);
+    reportError("hideCustomerFailed", { customer: name, error: err });
     _allCustomers = before;
     paintRecentList(_allCustomers);
     showToast(`Couldn't remove ${name} — try again`);

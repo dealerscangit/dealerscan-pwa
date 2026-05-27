@@ -20,6 +20,7 @@ import { renderCamera, attachCameraHandlers } from "./screens/camera.js";
 import { renderReview, attachReviewHandlers } from "./screens/review.js";
 import { renderUpload, attachUploadHandlers } from "./screens/upload.js";
 import { renderDone, attachDoneHandlers } from "./screens/done.js";
+import "./errorReporter.js"; // side-effect: installs global window error handlers
 
 // ───────────────────────────────────────────────────────────
 // Shared session state
@@ -44,15 +45,21 @@ export const session = {
   },
 };
 
-// Dev debug helper
-window.DS = {
-  api: { createCustomerFolder, uploadPhoto, getCustomerHistory },
-  user: { SALESPEOPLE, getCurrentSalesperson, setCurrentSalesperson, clearCurrentSalesperson, isSignedIn },
-  session,
-  go: (screen) => showScreen(screen),
-};
-
-console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() || "(none)");
+// Debug helpers — gated behind localStorage.ds.debug flag so they don't
+// clutter the global namespace in production. To enable on a phone:
+//   1. Open Safari, visit https://dealerscan.live
+//   2. Use the share menu → Add to Home Screen (or just stay in Safari)
+//   3. In Safari's URL bar enter: javascript:localStorage.setItem('ds.debug','1');location.reload()
+//   4. Reload the PWA, then connect Mac Safari → Develop → [iPhone] → console
+if (localStorage.getItem("ds.debug") === "1") {
+  window.DS = {
+    api: { createCustomerFolder, uploadPhoto, getCustomerHistory },
+    user: { SALESPEOPLE, getCurrentSalesperson, setCurrentSalesperson, clearCurrentSalesperson, isSignedIn },
+    session,
+    go: (screen) => showScreen(screen),
+  };
+  console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() || "(none)");
+}
 
 // ───────────────────────────────────────────────────────────
 // Screen routing

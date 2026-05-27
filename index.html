@@ -11,9 +11,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png?v=9" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=21" />
+  <link rel="stylesheet" href="styles/main.css?v=22" />
 </head>
 <body>
   <main>
@@ -58,12 +58,11 @@
         </div>
       </section>
 
-      <!-- DEV-ONLY footer. Remove before public launch. -->
-      <footer class="dev-footer">
-        <button id="signout-btn" class="text-link" type="button">Sign out</button>
+      <footer class="home-meta-footer">
+        <button id="signout-btn" class="meta-action" type="button">Switch user</button>
       </footer>
 
-      <div class="version-footer" id="version-footer">DealerScan PWA v0.1</div>
+      <div class="version-footer" id="version-footer">DealerScan PWA · 1.0</div>
     </section>
 
     <!-- ─────────────────────────────────────────────
@@ -142,7 +141,7 @@
           </button>
 
           <button class="camera-done-btn" id="btn-camera-done" type="button" disabled>
-            <span id="camera-done-label">Done</span>
+            <span id="camera-done-label">Review</span>
           </button>
         </div>
 
@@ -222,6 +221,6 @@
 
   </main>
 
-  <script type="module" src="scripts/app.js?v=21"></script>
+  <script type="module" src="scripts/app.js?v=22"></script>
 </body>
 </html>

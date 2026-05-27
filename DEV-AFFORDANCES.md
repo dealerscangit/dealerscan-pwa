@@ -20,121 +20,92 @@ Update this file every time we add temp code. Audit it before launch.
 
 ## Items
 
-### 🔴 Sign-out button (3 locations)
+### 🟢 "Switch user" link on home screen
 
-A visible "Sign out" text-link at the bottom of the home screen that clears
-the salesperson from localStorage and reloads to the picker. Added because
-iOS Safari's text-selection menu was hijacking a long-press gesture we tried
-first. Useful for testing the picker repeatedly without clearing browser data.
+What was previously the dev-only "Sign out" text-link has been renamed and
+restyled as production UI: it now reads "Switch user" and uses proper button
+styling (.meta-action) rather than a dashed-underline scaffolding look.
 
-**Why dev-only:** we decided in the design pass that v1 has no switch-user
-affordance (one phone = one salesperson, set once). This button violates that
-decision and only exists for testing.
+**Why keep:** even with Google Sign-In, salespeople sometimes share devices
+(one phone, two people). Tapping Switch user lets them clear the local
+session and sign in as a different person. This is real UX, not scaffolding.
 
-**Files / locations:**
-- `index.html` — `<footer class="dev-footer">` block inside the home screen
-  section. Delete the whole `<footer>`.
-- `styles/main.css` — the `.dev-footer` and `.text-link` rule blocks in the
-  "DEV-ONLY footer" section. Delete both rule blocks.
-- `scripts/app.js` — the `attachSignoutButton()` function AND the
-  `attachSignoutButton();` line inside `DOMContentLoaded`. Delete both.
-
-**Removal test:** sign in, confirm home screen renders without a Sign out link
-and without console errors.
+**Files:**
+- `index.html` — `<footer class="home-meta-footer">` inside the home screen
+- `styles/main.css` — `.home-meta-footer` and `.meta-action` rule blocks
+- `scripts/app.js` — `attachSignoutButton()` function and call (will be
+  updated when Google Sign-In ships to log out of Google in addition to
+  clearing local state)
 
 ---
 
-### 🟡 `window.DS` debug helper
+### 🟢 `window.DS` debug helper (gated behind ds.debug flag)
 
-Exposes the API client, user module, and helpers on the global `window.DS`
-object so we can call them from the browser console (e.g.
-`DS.user.clearCurrentSalesperson()`, `DS.api.getCustomerHistory('Brandon')`).
+The global debug helper is now gated behind `localStorage.getItem("ds.debug")
+=== "1"`. By default it's not exposed and the console boot message doesn't
+print. Salespeople won't see anything in their console.
 
-**Why review:** useful even after launch for support / debugging on a
-salesperson's phone via remote inspector. But exposing the entire API and
-helpers globally is overkill and a (very minor) attack surface.
+To enable on a phone for remote inspection:
+1. Open the PWA URL in Safari (not the PWA itself)
+2. Paste this into the URL bar:
+   `javascript:localStorage.setItem('ds.debug','1');location.reload()`
+3. Reload — `window.DS` is now available, and the boot message prints
+4. Connect via Mac Safari → Develop → [iPhone] → [the page] to use it
 
-**Recommendation:** gate behind a debug flag (e.g.
-`if (localStorage.getItem('ds.debug') === '1') { window.DS = {...} }`) or trim
-down to just the read-only helpers we actually need for support.
+To disable again, same approach with `localStorage.removeItem('ds.debug')`.
 
-**File / location:**
-- `scripts/app.js` — the `window.DS = { ... }` block near the top.
+**Why keep:** essential for diagnosing field issues without having to
+redeploy debug code. Opt-in, off by default.
 
----
-
-### 🟡 Console.log boot message
-
-Logs "[DealerScan PWA] booted. Signed in as: ..." on every page load.
-Harmless but noisy.
-
-**Recommendation:** keep for now (helps remote debugging via Web Inspector),
-remove or gate behind the same debug flag as `window.DS` before launch.
-
-**File / location:**
-- `scripts/app.js` — single `console.log` line near the top.
+**File:** `scripts/app.js` — the `if (localStorage.getItem("ds.debug")...)`
+block.
 
 ---
 
-### ~~🔴 Camera screen stub~~ (removed 2026-05-26)
+### 🟡 Version footer "DealerScan PWA · 1.0"
 
-Replaced with the real getUserMedia-based camera implementation. The
-`.camera-stub*` CSS rules are gone. The `<section data-screen="camera">`
-body now has a full-bleed viewfinder, big shutter, Done chip, thumb peek,
-and a permission-denied fallback panel with file picker.
+Small faint label at the bottom of the home screen. Updated from the earlier
+"v0.1" placeholder to a confident "1.0" semver string.
 
-### ~~🔴 Scaffolding note on home screen~~ (removed 2026-05-26)
+**Why review:** the version string should be bumped each time we ship a
+real release. Currently manual. Eventually consider tying it to git tags
+or a build step.
 
-Previously a dashed-border placeholder. Now replaced by the real "New Scan"
-primary card and recent customers list.
+**File:** `index.html` — `<div class="version-footer">` inside the home
+screen section.
 
 ---
 
 ### 🟢 Cache-busting `?v=N` query strings on CSS/JS
 
-The `<link rel="stylesheet" href="styles/main.css?v=5" />` and
-`<script src="scripts/app.js?v=5">` query strings.
+Standard practice. Production-ready. Long-term improvement: replace manual
+bumping with a build step that hashes file content.
 
-**Why keep:** iOS Safari (and others) aggressively cache static assets. The
-query string forces the browser to fetch a fresh copy whenever we bump the
-version. This is standard cache-busting practice and stays in production.
-
-**Long-term improvement:** replace the manual bumping with a build step that
-hashes the file content. Not urgent.
-
-**File / location:**
-- `index.html` — both the CSS link and the JS script tag.
+**File:** `index.html` — both the CSS link and the JS script tag.
 
 ---
 
-## Removal checklist (run before public launch)
-
-- [ ] Delete `<footer class="dev-footer">` block from `index.html`
-- [ ] Delete `.dev-footer` and `.text-link` rule blocks from `styles/main.css`
-- [ ] Delete `attachSignoutButton()` function from `scripts/app.js`
-- [ ] Delete `attachSignoutButton();` call from `DOMContentLoaded` in
-      `scripts/app.js`
-- [ ] Gate or remove `window.DS` debug helper in `scripts/app.js`
-- [ ] Gate or remove `console.log` boot message in `scripts/app.js`
-- [ ] Bump `?v=N` cache-bust version one last time so the cleaned-up code
-      actually loads on existing devices
+### ~~🔴 Camera screen stub~~ (removed 2026-05-26)
+### ~~🔴 Scaffolding note on home screen~~ (removed 2026-05-26)
+### ~~🔴 Plain "Sign out" text-link~~ (renamed to "Switch user" 2026-05-26)
+### ~~🔴 Ungated window.DS / console.log~~ (gated behind ds.debug flag 2026-05-26)
 
 ---
 
-### 🟡 Version footer on home screen ("DealerScan PWA v0.1")
+## Removal checklist before public launch
 
-Small faint label at the bottom of the home screen showing the app version.
-Helps with support ("what version are you on?") and gives polish-feel that
-matches the extension.
+Everything in the "Items" section above is now either 🟢 keep or 🟡 needs a
+small string update (version footer). The 🔴 must-remove items are all
+struck-through and resolved.
 
-**Why review:** the version *string* may need updating to a real semver
-before launch ("v0.1" implies pre-release). Keep the element, update the text.
+**Before any real public rollout to all 19 salespeople:**
 
-**File / location:**
-- `index.html` — `<div class="version-footer">` inside the home screen section
-- `styles/main.css` — `.version-footer` rule block
-
-**Removal test:** N/A — this is a keep.
+- [ ] Confirm `localStorage.ds.debug` is unset on your dev phone (paste
+      `javascript:localStorage.removeItem('ds.debug');location.reload()` into
+      Safari URL bar after testing)
+- [ ] Verify the "Switch user" button works after Google Sign-In is wired up
+      (should sign out of Google + clear local session)
+- [ ] Bump the version footer string to whatever real version you ship as
 
 ---
 
@@ -149,13 +120,10 @@ Description.
 
 **Why dev-only / Why review / Why keep:** ...
 
-**File / location:**
-- `path/to/file` — what to look for, what to delete.
+**Files / locations:** path + what to look for.
 
 **Removal test:** how to verify it's gone cleanly.
 ```
-
-Then add the removal step to the checklist above.
 
 ---
 
@@ -163,19 +131,11 @@ Then add the removal step to the checklist above.
 
 ### Slight color seam between gradient bottom and iOS home indicator zone
 
-There's a faint visible line where the body's gradient ends and the
-fixed-position background layer's solid fallback color begins, around the
-home indicator on iOS. We tried matching colors and adding extra gradient
-stops; got close but not invisible.
+Faint visible line where the body's gradient ends and the fixed-position
+background's solid fallback begins, around the home indicator on iOS.
+Cosmetic only.
 
-**Why deferred:** purely cosmetic, doesn't affect function, salespeople
-almost certainly won't notice. Comes back to it if it bothers Brandon later.
-
-**Possible fixes to try:**
-- Use a single fixed-position background that extends slightly past the
-  visual viewport (negative top/bottom insets)
-- Drop the gradient entirely in favor of a solid navy that matches the
-  extension's actual primary color
-- Use `background-attachment: fixed` on body with the gradient (was removed
-  earlier as flaky in Safari — but may be fine in PWA standalone mode)
-
+**Possible fixes to try later:**
+- Single fixed-position background extending past visual viewport
+- Drop gradient for a solid navy matching the extension's primary color
+- `background-attachment: fixed` (was flaky before, may work in PWA standalone)

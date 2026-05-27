@@ -4,6 +4,7 @@
 import { getCurrentSalesperson } from "../currentUser.js";
 import { getCustomerHistory, hideCustomer, unhideCustomer } from "../apiClient.js";
 import { makeSwipeable, showToast } from "../swipeActions.js";
+import { reportError } from "../errorReporter.js";
 
 let _showScreen = null;
 let _session = null;
@@ -60,6 +61,7 @@ async function renderRecentList() {
     paintRecentList(list, count, real);
   } catch (err) {
     console.error("[home] getCustomerHistory failed:", err);
+    reportError("getHistoryFailed", { error: err });
     if (!_historyCache) {
       list.innerHTML = '<div class="recent-empty muted small">Couldn\'t load recent customers.</div>';
     }
@@ -145,6 +147,7 @@ async function handleRemove(name) {
     await hideCustomer(sp, name);
   } catch (err) {
     console.error("[home] hideCustomer failed, restoring:", err);
+    reportError("hideCustomerFailed", { customer: name, error: err });
     _historyCache = before;
     renderRecentList();
     showToast(`Couldn't remove ${name} — try again`);

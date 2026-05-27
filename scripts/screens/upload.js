@@ -11,6 +11,7 @@
 
 import { getCurrentSalesperson } from "../currentUser.js";
 import { createCustomerFolder, uploadPhoto } from "../apiClient.js";
+import { reportError } from "../errorReporter.js";
 
 let _showScreen = null;
 let _session = null;
@@ -74,6 +75,12 @@ export async function renderUpload() {
         paintSummary();
       } catch (err) {
         console.error(`[upload] photo ${photo.filename} failed:`, err);
+        reportError("uploadFailed", {
+          customer: _session.customerName,
+          folderName: _session.folderId,
+          filename: photo.filename,
+          error: err,
+        });
         photo.status = "failed";
         updateActiveCard();
         paintSummary();
@@ -92,6 +99,10 @@ export async function renderUpload() {
     }
   } catch (err) {
     console.error("[upload] flow failed:", err);
+    reportError("createFolderFailed", {
+      customer: _session.customerName,
+      error: err,
+    });
     _isUploading = false;
     _session.photos.forEach((p) => {
       if (p.status === "pending" || p.status === "active") p.status = "failed";
