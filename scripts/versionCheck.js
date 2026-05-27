@@ -17,7 +17,7 @@ const APPS_SCRIPT_URL =
 // getVersion endpoint should be updated in lockstep with this constant.
 // Mismatches are logged but never block the UI — the PWA degrades to
 // whatever features the deployed backend supports.
-export const EXPECTED_BACKEND_VERSION = "1.10";
+export const EXPECTED_BACKEND_VERSION = "1.11";
 
 // Fire-and-forget. Runs in the background after boot.
 export async function checkBackendVersion() {
