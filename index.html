@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=39" />
+  <link rel="stylesheet" href="styles/main.css?v=40" />
 </head>
 <body>
   <main>
@@ -399,6 +399,14 @@
             </div>
             <svg class="settings-row-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </button>
+
+          <button class="settings-row settings-row-button" id="settings-dev-panel" type="button" hidden>
+            <div class="settings-row-text">
+              <p class="settings-row-title">Dev panel</p>
+              <p class="settings-row-sub">Manage users, roles, and system access</p>
+            </div>
+            <svg class="settings-row-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
         </div>
 
         <!-- ── Health (diagnostics) ───────────────── -->
@@ -450,6 +458,94 @@
         </div>
       </div>
     </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN: dev-panel (dev role only)
+         User management + system events + raw diagnostics.
+         Hidden from non-dev users by the JS that wires it up.
+         ───────────────────────────────────────────── -->
+    <section data-screen="dev-panel" hidden>
+      <header class="screen-header">
+        <button class="icon-button" data-back="settings" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h1>Dev panel</h1>
+      </header>
+
+      <div class="dev-panel-body">
+        <div class="dev-warning">
+          <i data-feather="alert-triangle" style="width: 14px; height: 14px;"></i>
+          <span>Changes here affect who can sign in. Edit with care.</span>
+        </div>
+
+        <!-- User registry table -->
+        <div class="dev-section">
+          <div class="dev-section-header">
+            <p class="dev-section-label">Users</p>
+            <button class="dev-section-action" id="dev-add-user" type="button">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Add user</span>
+            </button>
+          </div>
+          <div class="dev-user-list" id="dev-user-list">
+            <p class="muted" style="text-align: center; padding: 24px 8px; font-size: 13px;">Loading registry…</p>
+          </div>
+        </div>
+
+        <!-- Roles overview (read-only — roles defined in registry JSON) -->
+        <div class="dev-section">
+          <p class="dev-section-label">Roles</p>
+          <div class="dev-role-list" id="dev-role-list"></div>
+        </div>
+
+        <!-- Refresh registry from server -->
+        <div class="dev-section">
+          <button class="dev-button-wide" id="dev-refresh-registry" type="button">
+            Refresh registry from server
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal: add/edit user (lives outside the screen so it can overlay everything) -->
+    <div class="dev-user-modal" id="dev-user-modal" hidden>
+      <div class="dev-user-modal-backdrop" id="dev-user-modal-backdrop"></div>
+      <div class="dev-user-modal-panel">
+        <header class="dev-user-modal-header">
+          <h2 id="dev-user-modal-title">Add user</h2>
+          <button class="icon-button" id="dev-user-modal-close" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </header>
+        <div class="dev-user-modal-body">
+          <label class="dev-field">
+            <span class="dev-field-label">Email</span>
+            <input type="email" id="dev-user-email" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="someone@example.com" />
+          </label>
+          <label class="dev-field">
+            <span class="dev-field-label">Name</span>
+            <input type="text" id="dev-user-name" autocapitalize="words" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Display name" />
+          </label>
+          <label class="dev-field">
+            <span class="dev-field-label">Role</span>
+            <select id="dev-user-role">
+              <option value="sales">Salesperson</option>
+              <option value="manager">Manager</option>
+              <option value="dev">Dev</option>
+            </select>
+          </label>
+          <label class="dev-field dev-field-checkbox">
+            <input type="checkbox" id="dev-user-active" checked />
+            <span class="dev-field-label">Active (can sign in)</span>
+          </label>
+        </div>
+        <footer class="dev-user-modal-footer">
+          <button class="dev-button-secondary" id="dev-user-modal-cancel" type="button">Cancel</button>
+          <button class="dev-button-primary" id="dev-user-modal-save" type="button">Save</button>
+          <button class="dev-button-danger" id="dev-user-modal-delete" type="button" hidden>Deactivate</button>
+        </footer>
+      </div>
+    </div>
 
     <section data-screen="done" hidden>
       <div class="done-wrap">
@@ -507,6 +603,6 @@
   </div>
   </main>
 
-  <script type="module" src="scripts/app.js?v=39"></script>
+  <script type="module" src="scripts/app.js?v=40"></script>
 </body>
 </html>

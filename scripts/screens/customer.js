@@ -7,6 +7,7 @@ import { getCachedHistory, invalidateHistoryCache } from "./home.js";
 import { makeSwipeable, showToast } from "../swipeActions.js";
 import { titleCaseName } from "../textCase.js";
 import { readSettings } from "./settings.js";
+import { getAll as getQueueAll } from "../offlineQueue.js";
 import { reportError } from "../errorReporter.js";
 
 let _showScreen = null;
@@ -99,6 +100,12 @@ export async function renderCustomer() {
 }
 
 function filterAndPaint(query) {
+  // Merge in customers that are pending in the offline queue but not yet
+  // in the backend's customer history (so they show up immediately after
+  // an offline scan, with a "pending" badge in the row).
+  // Note: this is async-fire-and-forget; if queue read fails we just
+  // proceed without it. The DOM update happens in renderQueueBadges below.
+
   if (!query) {
     paintRecentList(_allCustomers);
     return;
@@ -143,6 +150,7 @@ function paintRecentList(customers) {
       ],
     });
   });
+  renderQueueBadges();
 }
 
 function buildRecentRow(name) {
@@ -222,4 +230,33 @@ async function handleRemove(name) {
       }
     },
   });
+}
+
+
+// Decorate recent-list rows whose customer name appears in the offline
+// queue with a "pending" badge. Runs after the list paints. Fire-and-forget.
+async function renderQueueBadges() {
+  try {
+    const queue = await getQueueAll();
+    if (!queue || queue.length === 0) return;
+    const pendingNames = new Set(
+      queue.map((q) => (q.customerName || "").trim().toLowerCase())
+    );
+    const recentList = document.getElementById("customer-recent-list");
+    if (!recentList) return;
+    recentList.querySelectorAll(".recent-item").forEach((row) => {
+      const nameEl = row.querySelector(".recent-item-name");
+      const name = (nameEl?.textContent || "").trim().toLowerCase();
+      if (pendingNames.has(name)) {
+        // Don't add the badge twice if filterAndPaint re-runs
+        if (row.querySelector(".pending-badge")) return;
+        const badge = document.createElement("span");
+        badge.className = "pending-badge";
+        badge.textContent = "pending";
+        nameEl?.parentNode?.appendChild(badge);
+      }
+    });
+  } catch (err) {
+    console.warn("[customer] renderQueueBadges failed:", err);
+  }
 }

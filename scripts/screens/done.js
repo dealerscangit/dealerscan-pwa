@@ -55,6 +55,12 @@ export function renderDone() {
   }
 
   if (sameBtn) {
-    sameBtn.textContent = `Scan more for ${customer}`;
+    // Queued case: the buttons still work (we'll just queue more), but
+    // make it clear the prior scan hasn't actually uploaded yet.
+    if (isQueued) {
+      sameBtn.textContent = `Scan another for ${customer}`;
+    } else {
+      sameBtn.textContent = `Scan more for ${customer}`;
+    }
   }
 }

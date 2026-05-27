@@ -63,6 +63,9 @@ function doGet(e) {
   if (action === "uploadPhoto")     return uploadPhoto(e);
   if (action === "getHistory")      return getHistory(e);
   if (action === "getHomeOverview") return getHomeOverview(e);  // ← NEW (PWA home screen)
+  if (action === "getRegistry")     return getRegistry(e);      // ← user registry read
+  if (action === "updateUser")      return updateUser(e);       // ← add/edit user (dev only)
+  if (action === "deleteUser")      return deleteUser(e);       // ← deactivate user (dev only)
   if (action === "hideCustomer")    return hideCustomer(e);     // ← NEW (PWA swipe-to-remove)
   if (action === "unhideCustomer")  return unhideCustomer(e);   // ← NEW (PWA swipe undo)
   if (action === "getVersion")      return getVersion(e);
@@ -678,7 +681,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.2"); }
+function getVersion(e) { return ContentService.createTextOutput("1.3"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
@@ -1013,3 +1016,130 @@ function getDashConfigWithUsers() {
 }
 
 // ────────── END OF FILE ──────────
+
+
+// ────────── PWA: User registry (added 2026-05-27) ──────────
+// Reads / writes _DealerScan_Users.json in SYSTEM_FOLDER_ID. The registry
+// defines who can sign in, what role they have, and what they can see.
+//
+// Roles + permissions are defined in the JSON itself (not hardcoded here)
+// so we can edit them without code changes. See backend/_DealerScan_Users.json
+// in the PWA repo for the canonical shape.
+//
+// Security note: ALL of these endpoints will require role=dev verification
+// once Google Sign-In ships. Today they're permissive but we expect to
+// gate them behind verifyToken once auth is in.
+
+var USERS_FILE_NAME = "_DealerScan_Users.json";
+
+function _getUsersFile() {
+  var folder = DriveApp.getFolderById(SYSTEM_FOLDER_ID);
+  var files = folder.getFilesByName(USERS_FILE_NAME);
+  return files.hasNext() ? files.next() : null;
+}
+
+function _readRegistry() {
+  var file = _getUsersFile();
+  if (!file) {
+    // First run: return a minimal default. Dev can populate via dev panel.
+    return {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      roles: {
+        dev:     { label: "Dev",         permissions: ["scan","viewOwnData","viewAllData","manageUsers","viewSystemEvents","managerActions"] },
+        manager: { label: "Manager",     permissions: ["scan","viewOwnData","viewAllData","managerActions"] },
+        sales:   { label: "Salesperson", permissions: ["scan","viewOwnData"] }
+      },
+      users: []
+    };
+  }
+  try {
+    return JSON.parse(file.getBlob().getDataAsString());
+  } catch (err) {
+    return { version: 1, users: [], roles: {}, error: String(err) };
+  }
+}
+
+function _writeRegistry(registry) {
+  registry.updatedAt = new Date().toISOString();
+  var json = JSON.stringify(registry, null, 2);
+  var file = _getUsersFile();
+  if (file) {
+    file.setContent(json);
+  } else {
+    var folder = DriveApp.getFolderById(SYSTEM_FOLDER_ID);
+    folder.createFile(USERS_FILE_NAME, json, "application/json");
+  }
+  return registry;
+}
+
+function getRegistry(e) {
+  try {
+    return json(_readRegistry());
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
+// Add or update a user. POST body should be { email, name, role, active }.
+// Match key is email (case-insensitive).
+function updateUser(e) {
+  try {
+    var payload = JSON.parse(e.parameter.payload || e.postData?.contents || "{}");
+    if (!payload.email) return jsonError(new Error("email required"));
+
+    var registry = _readRegistry();
+    var email = payload.email.toLowerCase().trim();
+    var idx = (registry.users || []).findIndex(function(u) {
+      return (u.email || "").toLowerCase().trim() === email;
+    });
+
+    var record = {
+      email: payload.email.trim(),
+      name: (payload.name || "").trim(),
+      role: payload.role || "sales",
+      active: payload.active !== false  // default true
+    };
+
+    if (idx >= 0) {
+      // Merge with existing (preserves any extra fields we might add later)
+      registry.users[idx] = Object.assign({}, registry.users[idx], record);
+    } else {
+      if (!registry.users) registry.users = [];
+      registry.users.push(record);
+    }
+
+    _writeRegistry(registry);
+    return json({ ok: true, user: record });
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
+// Soft-delete: sets active=false rather than removing. Preserves audit trail.
+// Pass { email, hard: true } to fully remove (rarely needed).
+function deleteUser(e) {
+  try {
+    var payload = JSON.parse(e.parameter.payload || e.postData?.contents || "{}");
+    if (!payload.email) return jsonError(new Error("email required"));
+
+    var registry = _readRegistry();
+    var email = payload.email.toLowerCase().trim();
+
+    if (payload.hard === true) {
+      registry.users = (registry.users || []).filter(function(u) {
+        return (u.email || "").toLowerCase().trim() !== email;
+      });
+    } else {
+      var idx = (registry.users || []).findIndex(function(u) {
+        return (u.email || "").toLowerCase().trim() === email;
+      });
+      if (idx >= 0) registry.users[idx].active = false;
+    }
+
+    _writeRegistry(registry);
+    return json({ ok: true });
+  } catch (err) {
+    return jsonError(err);
+  }
+}

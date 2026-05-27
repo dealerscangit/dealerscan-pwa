@@ -7,6 +7,7 @@
 import { getCurrentSalesperson, clearCurrentSalesperson } from "../currentUser.js";
 import { EXPECTED_BACKEND_VERSION } from "../versionCheck.js";
 import { count as queueCount, processQueue, getAll as getQueueAll } from "../offlineQueue.js";
+import { shouldShowDevEntry } from "./devPanel.js";
 
 const STORAGE_KEY = "ds.settings.v1";
 
@@ -168,6 +169,16 @@ export function renderSettings() {
       clearCurrentSalesperson();
       _showScreen("signin");
     };
+  }
+
+  // Dev panel — only visible to users with the manageUsers permission.
+  // The hidden attribute hides it by default; we unhide it here only if
+  // shouldShowDevEntry returns true (synchronous check against the cached
+  // registry loaded at boot).
+  const devBtn = document.getElementById("settings-dev-panel");
+  if (devBtn) {
+    devBtn.hidden = !shouldShowDevEntry();
+    devBtn.onclick = () => _showScreen("dev-panel");
   }
 
   // Health diagnostics

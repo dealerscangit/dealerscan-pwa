@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-27T00:00:00.000Z",
+  "roles": {
+    "dev": {
+      "label": "Dev",
+      "description": "Full access. Can manage users, view system events, see all data.",
+      "permissions": ["scan", "viewOwnData", "viewAllData", "manageUsers", "viewSystemEvents", "managerActions"]
+    },
+    "manager": {
+      "label": "Manager",
+      "description": "Sees all salespeople data and dashboards. Cannot edit user access.",
+      "permissions": ["scan", "viewOwnData", "viewAllData", "managerActions"]
+    },
+    "sales": {
+      "label": "Salesperson",
+      "description": "Standard scan access. Sees own data only.",
+      "permissions": ["scan", "viewOwnData"]
+    }
+  },
+  "users": [
+    { "email": "brandonbusler@gmail.com",    "name": "Brandon", "role": "dev",     "active": true },
+    { "email": "bryant.tgc@gmail.com",       "name": "Bryant",  "role": "manager", "active": true },
+    { "email": "buslertgc@gmail.com",        "name": "Michael", "role": "manager",   "active": true },
+    { "email": "chevycheyne@gmail.com",      "name": "Cheyne",  "role": "sales",   "active": true },
+    { "email": "chevykaufee@gmail.com",      "name": "Kaufee",  "role": "sales",   "active": true },
+    { "email": "ctaylortomgibbs@gmail.com",  "name": "Chris",   "role": "sales",   "active": true },
+    { "email": "ffriel1@gmail.com",          "name": "Frank",   "role": "sales",   "active": true },
+    { "email": "Keh200tl@gmail.com",         "name": "Kyle H.", "role": "manager",   "active": true },
+    { "email": "keithray133@gmail.com",      "name": "Keith",   "role": "sales",   "active": true },
+    { "email": "kylegiebeig7@gmail.com",     "name": "Kyle G.", "role": "sales",   "active": true },
+    { "email": "marshallraymond9@gmail.com", "name": "Raymond", "role": "sales",   "active": true },
+    { "email": "mclark.tomgibbschevy@gmail.com", "name": "Maria", "role": "sales", "active": true },
+    { "email": "rashongraves1@gmail.com",    "name": "Rashon",  "role": "sales",   "active": true },
+    { "email": "rruizchevy79@gmail.com",     "name": "Ryan",    "role": "sales",   "active": true },
+    { "email": "wgibbstgc@gmail.com",        "name": "Will",    "role": "manager",   "active": true },
+    { "email": "yusuftgchevy@gmail.com",     "name": "Yusuf",   "role": "sales",   "active": true }
+  ]
+}

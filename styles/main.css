@@ -2392,8 +2392,12 @@ main:has([data-screen="camera"]:not([hidden])) {
    live). The done screen check icon goes amber for queued, and the
    text says "Saved offline" instead of "All set". */
 .done-check.done-check-queued {
-  color: #fbbf24;
-  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.35));
+  /* Brighter amber + stronger glow so this state reads clearly different
+     from the green-success state at a glance. Also a soft outline to
+     anchor the icon on dark navy. */
+  color: #fcd34d;
+  filter: drop-shadow(0 0 16px rgba(252, 211, 77, 0.55))
+          drop-shadow(0 0 4px rgba(252, 211, 77, 0.4));
 }
 
 /* Settings health-section drain button — appears next to the queue
@@ -2419,3 +2423,333 @@ main:has([data-screen="camera"]:not([hidden])) {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* Pending badge — appears next to customer names in the picker when
+   the customer has a scan currently in the offline queue (waiting for
+   sync). Visual: small amber pill that says "pending". */
+.pending-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  background: rgba(251, 191, 36, 0.18);
+  color: #fbbf24;
+  border: 0.5px solid rgba(251, 191, 36, 0.32);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DEV PANEL — user management + system diagnostics
+   Hidden from non-dev users by the JS wiring it up.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.dev-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+.dev-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 0.5px solid rgba(251, 191, 36, 0.32);
+  color: #fcd34d;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dev-section { display: flex; flex-direction: column; gap: 6px; }
+.dev-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 4px 4px;
+}
+.dev-section-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.dev-section-action {
+  background: rgba(90, 158, 255, 0.14);
+  border: 0.5px solid rgba(90, 158, 255, 0.32);
+  border-radius: var(--radius-pill);
+  color: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dev-section-action:active { transform: scale(0.95); }
+
+/* User list rows */
+.dev-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dev-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+.dev-user-row:active { background: var(--surface-hover); }
+.dev-user-row.dev-user-row-inactive { opacity: 0.55; }
+
+.dev-user-row-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--accent-grad);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dev-user-row-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.dev-user-row-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--text);
+}
+.dev-user-row-email {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 1px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dev-user-row-role {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+.dev-user-row-role-dev {
+  background: rgba(231, 69, 96, 0.18);
+  color: #fda4af;
+  border: 0.5px solid rgba(231, 69, 96, 0.32);
+}
+.dev-user-row-role-manager {
+  background: rgba(167, 139, 250, 0.18);
+  color: #c4b5fd;
+  border: 0.5px solid rgba(167, 139, 250, 0.32);
+}
+.dev-user-row-role-sales {
+  background: rgba(94, 234, 212, 0.14);
+  color: #6ee7b7;
+  border: 0.5px solid rgba(94, 234, 212, 0.28);
+}
+.dev-user-row-inactive-tag {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
+/* Roles list */
+.dev-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dev-role-row {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.dev-role-row-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+.dev-role-row-perms {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", monospace;
+  word-break: break-word;
+}
+
+/* Wide action button */
+.dev-button-wide {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 12px;
+  width: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dev-button-wide:active { background: var(--surface-hover); }
+
+/* ── User add/edit modal ────────────────────────────── */
+.dev-user-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) * -1);
+  width: 100%;
+  z-index: 300;
+}
+.dev-user-modal[hidden] { display: none; }
+.dev-user-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: qmBackdropIn 0.18s var(--ease-out-cubic);
+}
+.dev-user-modal-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 32px);
+  max-width: 420px;
+  background: rgba(20, 50, 100, 0.95);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  box-shadow: var(--shadow-lg), 0 16px 48px rgba(0, 0, 0, 0.5);
+  animation: devModalIn 0.22s var(--ease-ios-spring);
+}
+@keyframes devModalIn {
+  from { opacity: 0; transform: translate(-50%, -45%) scale(0.92); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.dev-user-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border);
+}
+.dev-user-modal-header h2 {
+  font-size: 16px;
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+.dev-user-modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dev-user-modal-footer {
+  padding: 14px 16px;
+  display: flex;
+  gap: 8px;
+  border-top: 0.5px solid var(--border);
+}
+.dev-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.dev-field-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.dev-field input[type="text"],
+.dev-field input[type="email"],
+.dev-field select {
+  font: inherit;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+.dev-field-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dev-field-checkbox input[type="checkbox"] {
+  width: 18px; height: 18px;
+}
+.dev-button-primary,
+.dev-button-secondary,
+.dev-button-danger {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex: 1;
+}
+.dev-button-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.dev-button-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border: 0.5px solid var(--border);
+}
+.dev-button-danger {
+  background: rgba(231, 69, 96, 0.18);
+  color: #fda4af;
+  border: 0.5px solid rgba(231, 69, 96, 0.4);
+}
+.dev-button-primary:active { transform: scale(0.97); }
+.dev-button-secondary:active { transform: scale(0.97); }
+.dev-button-danger:active { transform: scale(0.97); }

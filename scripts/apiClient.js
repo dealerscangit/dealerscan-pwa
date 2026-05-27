@@ -183,3 +183,37 @@ async function fallbackHomeOverview(salesName) {
     topCustomers: [],
   };
 }
+
+
+// ────────── User registry (dev panel) ──────────
+// All three of these need to be gated by role=dev once Sign-In + role
+// enforcement ships. Today they're callable by anyone with the URL.
+
+export async function getRegistry() {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "getRegistry");
+  const res = await fetch(url.toString(), { method: "GET" });
+  if (!res.ok) throw new Error(`getRegistry HTTP ${res.status}`);
+  return await res.json();
+}
+
+export async function updateUser(user) {
+  // user shape: { email, name, role, active? }
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "updateUser");
+  const formData = new FormData();
+  formData.set("payload", JSON.stringify(user));
+  const res = await fetch(url.toString(), { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`updateUser HTTP ${res.status}`);
+  return await res.json();
+}
+
+export async function deleteUser(email, hard = false) {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "deleteUser");
+  const formData = new FormData();
+  formData.set("payload", JSON.stringify({ email, hard }));
+  const res = await fetch(url.toString(), { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`deleteUser HTTP ${res.status}`);
+  return await res.json();
+}
