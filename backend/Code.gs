@@ -65,6 +65,7 @@ function doGet(e) {
   if (action === "getHomeOverview") return getHomeOverview(e);  // ← NEW (PWA home screen)
   if (action === "getTeamOverview") return getTeamOverview(e); // ← NEW (manager dashboard)
   if (action === "listAnnouncements") return listAnnouncements(e);
+  if (action === "verifyToken") return verifyToken(e);
   if (action === "createAnnouncement") return createAnnouncement(e);
   if (action === "deleteAnnouncement") return deleteAnnouncement(e);
   if (action === "getRegistry")     return getRegistry(e);      // ← user registry read
@@ -689,7 +690,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.7"); }
+function getVersion(e) { return ContentService.createTextOutput("1.8"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
@@ -1442,4 +1443,117 @@ function deleteAnnouncement(e) {
   } catch (err) {
     return jsonError(err);
   }
+}
+
+
+// ────────── Sign-In: token verification (added 2026-05-27) ──────────
+// PWA passes a Google ID token (JWT from Google Identity Services) via
+// ?token= query param OR Authorization: Bearer header. We validate it
+// against Googles tokeninfo endpoint, then look up the email in the
+// registry. If active + present, return the users profile so the PWA
+// can paint the UI immediately without a second registry call.
+//
+// CACHE: validated tokens are cached for 5 min in CacheService keyed
+// by token hash. This avoids hitting Googles tokeninfo on every API
+// call (which would add ~300ms per request).
+//
+// USAGE FROM PWA (tomorrow):
+//   GET ?action=verifyToken&token=eyJhbGc...
+//   -> { ok: true, email, name, role, picture? }
+//   or
+//   -> { ok: false, error: "invalid_token" | "not_in_registry" | "inactive" }
+//
+// TOMORROW: also gate the OTHER protected actions by requiring a valid
+// token in the same way. _requireAuth(e) helper below does this — but
+// we are NOT wiring it into existing endpoints yet, since that would
+// break the live app immediately. Wire it in as part of the Sign-In
+// frontend ship.
+
+var TOKEN_CACHE_TTL_SEC = 300; // 5 min
+
+function verifyToken(e) {
+  try {
+    var token = (e.parameter.token || "").trim();
+    if (!token && e.headers) {
+      // Try Authorization header (only available if Apps Script exposes it,
+      // which it does NOT by default; this is for future compatibility)
+      var auth = e.headers["Authorization"] || e.headers["authorization"] || "";
+      if (auth.indexOf("Bearer ") === 0) token = auth.slice(7).trim();
+    }
+    if (!token) return json({ ok: false, error: "no_token" });
+
+    // Check cache first — keyed by a short hash of the token so we dont
+    // store full JWTs in cache (they can be ~1KB each)
+    var cache = CacheService.getScriptCache();
+    var cacheKey = "tok_" + Utilities.computeDigest(
+      Utilities.DigestAlgorithm.SHA_1, token
+    ).map(function(b){return ((b<0?b+256:b)<16?"0":"")+(b<0?b+256:b).toString(16);}).join("").slice(0, 16);
+    var hit = cache.get(cacheKey);
+    if (hit) {
+      try { return json(JSON.parse(hit)); } catch (e2) { /* fall through */ }
+    }
+
+    // Validate with Google. tokeninfo returns 200 + JSON if token valid.
+    var url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(token);
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (resp.getResponseCode() !== 200) {
+      return json({ ok: false, error: "invalid_token", googleStatus: resp.getResponseCode() });
+    }
+    var info = JSON.parse(resp.getContentText());
+    var email = (info.email || "").toLowerCase().trim();
+    if (!email) return json({ ok: false, error: "no_email_in_token" });
+    if (info.email_verified !== true && info.email_verified !== "true") {
+      return json({ ok: false, error: "email_not_verified" });
+    }
+
+    // Look up in registry
+    var registry = _readRegistry();
+    var user = (registry.users || []).find(function(u) {
+      return (u.email || "").toLowerCase().trim() === email;
+    });
+    if (!user) return json({ ok: false, error: "not_in_registry", email: email });
+    if (user.active === false) return json({ ok: false, error: "inactive", email: email });
+
+    var result = {
+      ok: true,
+      email: user.email,
+      name: user.name,
+      role: user.role || "sales",
+      picture: info.picture || null,
+      tokenExpiresAt: info.exp ? parseInt(info.exp, 10) * 1000 : null,
+    };
+
+    // Cache the success result so subsequent calls in 5 min skip tokeninfo
+    try {
+      cache.put(cacheKey, JSON.stringify(result), TOKEN_CACHE_TTL_SEC);
+    } catch (e3) { /* cache is best-effort */ }
+
+    return json(result);
+  } catch (err) {
+    return jsonError(err);
+  }
+}
+
+// Helper: extract validated user from request. Returns the registry
+// user record on success, throws on failure. NOT WIRED IN YET. Tomorrow
+// well wrap protected endpoints (uploadPhoto, createCustomerFolder,
+// updateUser, etc) with this check.
+//
+// Example future usage:
+//   function uploadPhoto(e) {
+//     var user = _requireAuth(e);  // throws 401 if not signed in
+//     // ... existing logic, with user.email available
+//   }
+function _requireAuth(e) {
+  var resp = verifyToken(e);
+  // verifyToken returns a ContentService TextOutput; we need the raw object
+  // For internal use, parse the response back. Cleaner: refactor verifyToken
+  // to a _validateToken internal that returns the object, with verifyToken
+  // as a thin HTTP wrapper. Doing that tomorrow.
+  var content = resp.getContent();
+  var data = JSON.parse(content);
+  if (!data.ok) {
+    throw new Error("auth_failed: " + (data.error || "unknown"));
+  }
+  return data;
 }
