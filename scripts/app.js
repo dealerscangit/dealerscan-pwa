@@ -32,6 +32,9 @@ import {
 import "./errorReporter.js"; // side-effect: installs global window error handlers
 import { checkBackendVersion } from "./versionCheck.js";
 import { processQueue, count as queueCount } from "./offlineQueue.js";
+import { getHomeOverview } from "./apiClient.js";
+import { getOrFetch } from "./dataCache.js";
+import { getCurrentSalesperson } from "./currentUser.js";
 
 // Apply saved accent + behavior settings before any screen renders so the
 // initial paint uses the user's chosen accent color (no flash of default blue).
@@ -76,13 +79,23 @@ if (localStorage.getItem("ds.debug") === "1") {
   console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() || "(none)");
 }
 
-// Fire-and-forget backend version check — logs mismatches to the event log
-// so we notice when a deploy is stale. See scripts/versionCheck.js.
-setTimeout(checkBackendVersion, 2000);
-
-// Load the user registry early so role-based UI checks (e.g. showing the
-// dev panel entry in settings) have data to work with. Fire-and-forget.
-loadRegistry().catch((err) => console.warn("[app] loadRegistry failed:", err));
+// Parallel prefetch — kick off all the slow API calls AT ONCE rather
+// than letting each screen wait for its own. By the time the user lands
+// on home or opens the dev panel, the data is already in the cache.
+//
+// Apps Script has a ~1.5s cold-start floor per request, so running 3
+// requests in parallel saves ~3s of total wait time vs sequential.
+setTimeout(() => {
+  const sp = getCurrentSalesperson();
+  // All three fire simultaneously; we don't await them. Each populates
+  // its own cache so screens can paint instantly when navigated to.
+  if (sp) {
+    getOrFetch(`homeOverview:${sp}`, () => getHomeOverview(sp))
+      .catch((err) => console.warn("[app] home prefetch failed:", err));
+  }
+  loadRegistry().catch((err) => console.warn("[app] loadRegistry failed:", err));
+  checkBackendVersion();
+}, 100);
 
 // Process the offline queue on boot (delayed so it doesn't compete with
 // first-paint) and again whenever the network comes back online. The

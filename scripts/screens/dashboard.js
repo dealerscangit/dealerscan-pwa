@@ -8,6 +8,7 @@
 
 import { getCurrentSalesperson } from "../currentUser.js";
 import { getHomeOverview } from "../apiClient.js";
+import { getOrFetch } from "../dataCache.js";
 
 let _showScreen = null;
 let _session = null;
@@ -19,37 +20,37 @@ export function attachDashboardHandlers(showScreen, session) {
 }
 
 export async function renderDashboard() {
-  // Try cache first for instant paint
-  if (_lastData) {
-    paint(_lastData);
-  } else {
-    // No cache — show spinners in all stat fields. Loading state must
-    // be visible immediately, even if the network is fast.
-    paintLoadingSpinners();
-  }
-
   const sp = getCurrentSalesperson();
   if (!sp) {
     paintEmpty();
     return;
   }
-  const fetchStart = Date.now();
-  try {
-    const data = await getHomeOverview(sp);
-    // Enforce minimum spinner visible time — same 400ms threshold as
-    // the home screen so the loading state is perceptible even on a
-    // very fast network. Cached re-renders bypass this entirely.
-    if (!_lastData) {
-      const elapsed = Date.now() - fetchStart;
-      if (elapsed < 400) {
-        await new Promise((r) => setTimeout(r, 400 - elapsed));
-      }
+
+  // Pull from the SAME shared cache the home screen uses. This is the
+  // big win: opening home -> dashboard reuses the data already fetched
+  // by home, with no second call.
+  const cacheKey = `homeOverview:${sp}`;
+  const { value: cached, freshPromise } = await getOrFetch(
+    cacheKey,
+    () => getHomeOverview(sp)
+  );
+
+  if (cached) {
+    _lastData = cached;
+    paint(cached);
+  } else {
+    paintLoadingSpinners();
+  }
+
+  if (freshPromise) {
+    try {
+      const data = await freshPromise;
+      _lastData = data;
+      paint(data);
+    } catch (err) {
+      console.error("[dashboard] fetch failed:", err);
+      if (!cached) paintEmpty();
     }
-    _lastData = data;
-    paint(data);
-  } catch (err) {
-    console.error("[dashboard] fetch failed:", err);
-    if (!_lastData) paintEmpty();
   }
 }
 

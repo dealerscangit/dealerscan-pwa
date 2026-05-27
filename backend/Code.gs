@@ -683,7 +683,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.4"); }
+function getVersion(e) { return ContentService.createTextOutput("1.5"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
@@ -1040,10 +1040,22 @@ function _getUsersFile() {
   return files.hasNext() ? files.next() : null;
 }
 
+var REGISTRY_CACHE_KEY = "ds_registry_v1";
+var REGISTRY_CACHE_TTL_SEC = 300; // 5 min
+
 function _readRegistry() {
+  // Server-side cache via CacheService — eliminates the Drive file read on
+  // every getRegistry call. TTL of 5 min means edits via updateUser are
+  // visible within at most 5 min, but updateUser invalidates the cache
+  // explicitly so changes are reflected immediately.
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get(REGISTRY_CACHE_KEY);
+  if (hit) {
+    try { return JSON.parse(hit); } catch (e) { /* fall through to file read */ }
+  }
+
   var file = _getUsersFile();
   if (!file) {
-    // First run: return a minimal default. Dev can populate via dev panel.
     return {
       version: 1,
       updatedAt: new Date().toISOString(),
@@ -1056,7 +1068,9 @@ function _readRegistry() {
     };
   }
   try {
-    return JSON.parse(file.getBlob().getDataAsString());
+    var registry = JSON.parse(file.getBlob().getDataAsString());
+    cache.put(REGISTRY_CACHE_KEY, JSON.stringify(registry), REGISTRY_CACHE_TTL_SEC);
+    return registry;
   } catch (err) {
     return { version: 1, users: [], roles: {}, error: String(err) };
   }
@@ -1072,6 +1086,12 @@ function _writeRegistry(registry) {
     var folder = DriveApp.getFolderById(SYSTEM_FOLDER_ID);
     folder.createFile(USERS_FILE_NAME, json, "application/json");
   }
+  // Update cache with the new content so subsequent reads return fresh data
+  // without re-hitting Drive. Also invalidate stale cached version.
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.put(REGISTRY_CACHE_KEY, JSON.stringify(registry), REGISTRY_CACHE_TTL_SEC);
+  } catch (e) { /* cache update is best-effort */ }
   return registry;
 }
 

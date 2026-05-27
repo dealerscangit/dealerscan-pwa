@@ -15,6 +15,7 @@ import {
 import { makeSwipeable, showToast } from "../swipeActions.js";
 import { reportError } from "../errorReporter.js";
 import { count as queueCount, processQueue } from "../offlineQueue.js";
+import { getOrFetch, invalidate as invalidateCache } from "../dataCache.js";
 
 let _showScreen = null;
 let _session = null;
@@ -116,47 +117,50 @@ function setSyncing(isSyncing) {
 // Overview (counters + timeline) — single fetch, single paint
 // ──────────────────────────────────────────────────────────────────
 async function renderOverview() {
-  // Paint from cache immediately if we have it; this is what makes
-  // re-entering the screen feel instant.
-  if (_overviewCache) {
-    paintCounters(_overviewCache);
-    paintTimeline(_overviewCache.timeline);
-  } else {
-    // No cache — show spinners in all counters and a skeleton timeline.
-    // Loading state must be immediately visible, even if the network is fast.
-    paintLoadingSpinners();
-    paintSkeleton();
-  }
-
   const sp = getCurrentSalesperson();
   if (!sp) {
     paintEmpty();
     return;
   }
 
-  setSyncing(true);
-  const fetchStart = Date.now();
-  try {
-    const data = await getHomeOverview(sp);
-    // Enforce minimum spinner visible time so very fast fetches still
-    // show a perceptible loading state. 400ms = the just-noticeable
-    // threshold for state changes; lower feels jarringly instant.
-    if (!_overviewCache) {
-      const elapsed = Date.now() - fetchStart;
-      if (elapsed < 400) {
-        await new Promise((r) => setTimeout(r, 400 - elapsed));
-      }
+  // Pull from shared cache; if stale, kick off a fresh fetch in the
+  // background. This is the key change that makes re-entering screens
+  // feel instant: we paint cached data immediately AND let the refresh
+  // happen invisibly.
+  const cacheKey = `homeOverview:${sp}`;
+  const { value: cached, isStale, freshPromise } = await getOrFetch(
+    cacheKey,
+    () => getHomeOverview(sp)
+  );
+
+  // Initial paint from cache (or spinners if no cache yet)
+  if (cached) {
+    paintCounters(cached);
+    paintTimeline(cached.timeline);
+    _overviewCache = cached;  // legacy compat for getCachedHistory
+  } else {
+    paintLoadingSpinners();
+    paintSkeleton();
+  }
+
+  // If a fetch is in flight, await it (silently, no spinner) and re-paint
+  // when it completes. setSyncing flips the status dot to syncing while
+  // we wait, so the user gets visual confirmation that data is loading.
+  if (freshPromise) {
+    setSyncing(true);
+    try {
+      const data = await freshPromise;
+      _overviewCache = data;
+      paintCounters(data);
+      paintTimeline(data.timeline);
+    } catch (err) {
+      console.error("[home] overview refresh failed:", err);
+      reportError("getHomeOverviewFailed", { error: err });
+      // If we had nothing cached, fall back to empty rather than skeleton
+      if (!cached) paintEmpty();
+    } finally {
+      setSyncing(false);
     }
-    _overviewCache = data;
-    paintCounters(data);
-    paintTimeline(data.timeline);
-  } catch (err) {
-    console.error("[home] getHomeOverview failed:", err);
-    reportError("getHomeOverviewFailed", { error: err });
-    // If we have no cache to fall back on, show empty rather than skeleton
-    if (!_overviewCache) paintEmpty();
-  } finally {
-    setSyncing(false);
   }
 }
 
