@@ -20,6 +20,8 @@ import { renderCamera, attachCameraHandlers } from "./screens/camera.js";
 import { renderReview, attachReviewHandlers } from "./screens/review.js";
 import { renderUpload, attachUploadHandlers } from "./screens/upload.js";
 import { renderDone, attachDoneHandlers } from "./screens/done.js";
+import { attachQuickMenuHandlers } from "./screens/quickMenu.js";
+import { renderDashboard, attachDashboardHandlers } from "./screens/dashboard.js";
 import {
   renderSettings,
   attachSettingsHandlers,
@@ -86,6 +88,7 @@ const SCREEN_RENDERERS = {
   review:   renderReview,
   upload:   renderUpload,
   done:     renderDone,
+  dashboard: renderDashboard,
   settings: renderSettings,
 };
 
@@ -143,6 +146,8 @@ window.addEventListener("DOMContentLoaded", () => {
   attachSigninHandlers(showScreen);
   attachHomeHandlers(showScreen, session);
   attachSettingsHandlers(showScreen, session);
+  attachQuickMenuHandlers(showScreen, session);
+  attachDashboardHandlers(showScreen, session);
   attachCustomerHandlers(showScreen, session);
   attachCameraHandlers(showScreen, session);
   attachReviewHandlers(showScreen, session);

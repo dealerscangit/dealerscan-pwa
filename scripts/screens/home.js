@@ -37,15 +37,9 @@ export function attachHomeHandlers(showScreen, session) {
     });
   }
 
-  const btnAllCustomers = document.getElementById("btn-all-customers");
-  if (btnAllCustomers) {
-    btnAllCustomers.addEventListener("click", () => {
-      // Secondary CTA = browse the full recent list. Reuses the customer
-      // picker screen but starts blank (no auto-create new).
-      _session.reset();
-      _showScreen("customer");
-    });
-  }
+  // Quick menu trigger is now handled by attachQuickMenuHandlers in
+  // scripts/screens/quickMenu.js. The old btn-all-customers element
+  // was replaced by btn-quick-menu when the design changed to a kebab.
 
   const btnSettings = document.getElementById("btn-settings");
   if (btnSettings) {

@@ -135,6 +135,13 @@ export async function getHomeOverview(salesName) {
       week: data.week || 0,
       total: data.total || 0,
       timeline: Array.isArray(data.timeline) ? data.timeline : [],
+      // Dashboard fields — only present when backend is >= 1.2. Defaults
+      // are safe zeros / nulls so the dashboard renders an empty state
+      // gracefully when the backend is stale.
+      dailyCounts: Array.isArray(data.dailyCounts) ? data.dailyCounts : [0,0,0,0,0,0,0],
+      weekTotalPhotos: data.weekTotalPhotos || 0,
+      peakHour: typeof data.peakHour === "number" ? data.peakHour : null,
+      topCustomers: Array.isArray(data.topCustomers) ? data.topCustomers : [],
     };
   } catch (err) {
     // If anything threw (network, parse, etc.), try the fallback as a last
@@ -170,5 +177,9 @@ async function fallbackHomeOverview(salesName) {
     week: real.length,
     total: real.length,
     timeline,
+    dailyCounts: [0,0,0,0,0,0,0],
+    weekTotalPhotos: 0,
+    peakHour: null,
+    topCustomers: [],
   };
 }

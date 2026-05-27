@@ -423,13 +423,17 @@ function getHistory(e) {
 function getHomeOverview(e) {
   try {
     var salesName = decodeURIComponent(e.parameter.salesName || "").trim().replace(/[^\x20-\x7E]/g, "");
-    if (!salesName) {
-      return json({ today: 0, week: 0, total: 0, timeline: [] });
-    }
+    var emptyResponse = {
+      today: 0, week: 0, total: 0, timeline: [],
+      dailyCounts: [0,0,0,0,0,0,0],
+      weekTotalPhotos: 0,
+      peakHour: null,
+      topCustomers: []
+    };
+    if (!salesName) return json(emptyResponse);
+
     var ss = getHistorySpreadsheet(), sheet = ss.getSheetByName("ScanLog");
-    if (!sheet) {
-      return json({ today: 0, week: 0, total: 0, timeline: [] });
-    }
+    if (!sheet) return json(emptyResponse);
     var data = sheet.getDataRange().getValues();
 
     // Compute day boundaries server-side in script timezone
@@ -438,7 +442,12 @@ function getHomeOverview(e) {
     var startOfWeek = startOfDay - 6 * 86400000; // last 7 days inclusive of today
 
     var today = 0, week = 0, total = 0;
-    var todayScans = []; // collect today's rows for timeline (deduped by customer + sorted)
+    var weekTotalPhotos = 0;
+    var todayScans = []; // for timeline
+    // dailyCounts[0] = 6 days ago, [6] = today. Filled by relative-day index.
+    var dailyCounts = [0,0,0,0,0,0,0];
+    var hourBuckets = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; // 24 hours, week-wide
+    var customerPhotoTotals = {}; // customer -> sum of photoCount over the week
 
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
@@ -448,21 +457,33 @@ function getHomeOverview(e) {
 
       total++;
       var ts = row[3];
-      if (ts >= startOfWeek) week++;
+      var photoCount = row[7] || 0;
+
+      if (ts >= startOfWeek) {
+        week++;
+        weekTotalPhotos += photoCount;
+        // Which day-of-week bucket (0-6)?
+        var dayIndex = Math.floor((ts - startOfWeek) / 86400000);
+        if (dayIndex >= 0 && dayIndex < 7) dailyCounts[dayIndex]++;
+        // Hour bucket for peak-hour calc
+        var hour = new Date(ts).getHours();
+        if (hour >= 0 && hour < 24) hourBuckets[hour]++;
+        // Customer photo totals
+        var cust = row[1] || "";
+        if (cust) customerPhotoTotals[cust] = (customerPhotoTotals[cust] || 0) + photoCount;
+      }
       if (ts >= startOfDay) {
         today++;
         todayScans.push({
           customer: row[1] || "",
           timestamp: ts,
           folderId: row[2] || "",
-          photoCount: row[7] || 0,
+          photoCount: photoCount,
         });
       }
     }
 
-    // Dedupe timeline by customer (keep latest entry for each), then sort
-    // newest-first, then trim to the most recent 8 (home screen shows ~3,
-    // we send a few extras for future "see more" without another call).
+    // Timeline (today only, deduped by customer, newest first, top 8)
     var byCustomer = {};
     todayScans.forEach(function(s) {
       if (!byCustomer[s.customer] || s.timestamp > byCustomer[s.customer].timestamp) {
@@ -471,10 +492,7 @@ function getHomeOverview(e) {
     });
     var timeline = Object.keys(byCustomer).map(function(k) { return byCustomer[k]; });
     timeline.sort(function(a, b) { return b.timestamp - a.timestamp; });
-    timeline = timeline.slice(0, 8);
-
-    // Convert timestamps to ISO strings for predictable client parsing
-    timeline = timeline.map(function(s) {
+    timeline = timeline.slice(0, 8).map(function(s) {
       return {
         customer: s.customer,
         timestamp: new Date(s.timestamp).toISOString(),
@@ -483,7 +501,28 @@ function getHomeOverview(e) {
       };
     });
 
-    return json({ today: today, week: week, total: total, timeline: timeline });
+    // Peak hour: which 0-23 bucket has the most scans this week
+    var peakHour = null, peakCount = 0;
+    for (var h = 0; h < 24; h++) {
+      if (hourBuckets[h] > peakCount) { peakCount = hourBuckets[h]; peakHour = h; }
+    }
+
+    // Top customers this week by photo count, top 3
+    var topCustomers = Object.keys(customerPhotoTotals)
+      .map(function(k) { return { customer: k, photoCount: customerPhotoTotals[k] }; })
+      .sort(function(a, b) { return b.photoCount - a.photoCount; })
+      .slice(0, 3);
+
+    return json({
+      today: today,
+      week: week,
+      total: total,
+      timeline: timeline,
+      dailyCounts: dailyCounts,
+      weekTotalPhotos: weekTotalPhotos,
+      peakHour: peakHour,
+      topCustomers: topCustomers,
+    });
   } catch (err) {
     return jsonError(err);
   }
@@ -639,7 +678,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.1"); }
+function getVersion(e) { return ContentService.createTextOutput("1.2"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
