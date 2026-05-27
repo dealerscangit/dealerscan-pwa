@@ -162,9 +162,14 @@ export function renderSettings() {
   const currentUser = document.getElementById("settings-current-user");
   if (currentUser) currentUser.textContent = getCurrentSalesperson() || "(not signed in)";
 
-  // Switch user wiring
+  // Switch user wiring — only visible to dev role.
+  // Pre-Sign-In: dev can hop between users to test/debug. Sales and
+  // managers dont need this since theyll have one identity.
+  // Post-Sign-In: this becomes "Sign out" for everyone, but dev gets
+  // a separate "View as" affordance to inspect other users dashboards.
   const switchBtn = document.getElementById("settings-switch-user");
   if (switchBtn) {
+    switchBtn.hidden = !hasPermissionSync("manageUsers");
     switchBtn.onclick = () => {
       clearCurrentSalesperson();
       _showScreen("signin");

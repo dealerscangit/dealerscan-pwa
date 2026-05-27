@@ -1,225 +1,203 @@
 # NEXT-SESSION-PICKUP.md
 
-Last updated: end of 2026-05-26 evening session (v=38 shipped).
+Last updated: end of 2026-05-27 evening (v=54 shipped).
 
 **Repo:** `github.com/dealerscangit/dealerscan-pwa` (public)
 **Live URL:** `https://dealerscan.live`
 **Local working dir:** `/Users/brandonbusler/Desktop/dealerscan-pwa`
-**Latest cache-bust:** `v=38`
-**Backend deployed version:** `1.2`
+**Latest cache-bust:** `v=54`
+**Backend deployed version:** `1.7`
 
 ---
 
-## State of the app as of end of this session
+## State at end of this session
 
-The PWA is now substantially polished and feature-complete for v1 rollout.
-Just shipped a major polish + redesign + reliability pass:
+Massive day. Highlights:
+- Concept C phase 1 shipped (offline queue + diagnostics)
+- Bottom band finally killed (solid bg instead of gradient — 6 attempts to find this)
+- Dev panel + role system foundation in place
+- Manager-tier dashboard with team data + collapsible cards + pill search
+- Announcements feature end-to-end (banner + compose modal + per-user dismiss)
+- Photo upload sped up 4x via compress + parallel + optimistic UI
+- Backend bumped 1.2 -> 1.7 across multiple deploys
 
-### Home screen — fully redesigned (V2/V3 hybrid)
-- Pinned status strip (top): status dot + label + settings gear
-- Profile card: avatar + name + role + today's count
-- Tab-pill counters: today / week / total
-- Threaded vertical timeline: rows with avatars + name + photo count
-  subtitle + timestamp, dot connectors with fade gradient line
-- Split CTA: red "New scan" beacon + kebab menu button
-- Smart loading: spinners on initial fetch with 400ms minimum visible
-  time, cached re-renders paint instantly
-
-### Camera screen
-- Full-bleed black stage extending under home indicator (no rounded
-  corner band)
-- iOS Sketch callout suppressed via user-select: none
-- "Preparing camera..." overlay during silent permission re-acquire
-- Done button nudge animation after each capture
-- iOS-aware haptic toggle (hidden on iOS where vibrate is unsupported)
-
-### Settings screen
-- Appearance: 5 accent color swatches (blue / purple / teal / amber / rose)
-  with live CSS variable swap
-- Behavior: haptics toggle (hidden iOS), nudge toggle, title-case toggle
-- Account: signed-in identity, switch user
-- **Health: connection status, offline queue contents, manual Drain Now
-  button, storage estimate** (added this session)
-- About: PWA version, live backend version check with "Redeploy needed"
-  message when mismatched
-
-### Dashboard screen
-- Week chart: 7 vertical bars with today highlighted, animate from 0 height
-- Stat row: peak hour, avg docs / customer, scans this week
-- Top customers list (top 3 by photo count, with rank badges)
-- Spinners on initial load with 400ms minimum visible time
-
-### Quick menu (kebab popover)
-- Anchored to the kebab button, animates scale+opacity from corner
-- Items: Dashboard, Search, Switch user, Help, Report issue
-- Smooth open + close animations
-- Backdrop dismisses on tap, extends through safe-area-inset-bottom
-
-### Offline queue (NEW this session — Concept C phase 1)
-- IndexedDB-backed queue for scans captured offline
-- Upload flow detects `!navigator.onLine` and queues instead of failing
-- Status strip shows "Offline · N queued" so users know their work is safe
-- Boot-time + online-event auto-drain with exponential backoff
-- Manual "Drain now" button in Settings → Health
-- Done screen shows "Saved offline · will upload when back online" with
-  amber check icon when queued
-
-### Passive animations
-- Background color blooms drift (18s)
-- Status dot breathing when synced (4s)
-- Timeline thread comet (7s)
-- Profile card avatar gradient shift (12s)
-- Red CTA beacon pulse (5s)
-- Counter pill active highlight (6s)
-- All wrapped in `@media (prefers-reduced-motion: no-preference)`
-
-### Performance work shipped
-- Preconnect / dns-prefetch to script.google.com (saves ~100-300ms on
-  first API call)
-- Cache-first paint, then refresh in background
-- Single round-trip `getHomeOverview` endpoint (today/week/total/
-  timeline/dailyCounts/peakHour/topCustomers all in one call)
-- Fallback path to legacy `getHistory` if backend is stale
-
-### Bug fixes shipped
-- Triple-counted safe-area-inset-top (status strip was huge)
-- Camera stutter on first load (intrinsic 0x0 video element)
-- Pink swipe action bleeding through translucent timeline cards
-- Dark pixel corners on timeline rows (swipe-wrap radius mismatch)
-- Bottom band on iOS PWA home indicator zone (negative margin trick)
-- Screen transition translateY revealing body bg
-- Timeline dot clipping (now sibling of swipe-wrap)
+What's pending: Google Sign-In, Face ID, view-as for dev, extension reconnection.
 
 ---
 
-## ✅ Completed (full feature inventory)
+## 🎯 TOMORROW'S PRIORITIES (in order)
+
+### Priority 1 — Google Sign-In (Path B, allow-list)
+
+**Brandon's action items BEFORE we start:**
+- Get OAuth Client ID from Google Cloud Console
+  - https://console.cloud.google.com/apis/credentials
+  - Create OAuth 2.0 Client ID, type "Web application"
+  - Authorized JavaScript origins: `https://dealerscan.live`
+  - Authorized redirect URIs: not needed for GIS button flow
+  - Copy the client ID (looks like `1234567890-abc...apps.googleusercontent.com`)
+
+**Backend work (Code.gs):**
+- `verifyToken` action: accepts a Google ID token, calls Google's tokeninfo endpoint to validate, caches the result in `CacheService` for 5 min keyed by token
+- Token gate wrapper for every protected action — checks the `Authorization: Bearer <token>` header (or `?token=` query param), rejects if invalid or if email isn't in registry
+- Returns role + name in verifyToken response so the PWA can paint the UI without a second registry call
+
+**Frontend work (PWA):**
+- Replace `scripts/screens/signin.js` 19-tile picker with Google Identity Services button
+- Load GIS script: `<script src="https://accounts.google.com/gsi/client" async defer>`
+- Render a button via `google.accounts.id.renderButton`
+- On credential response, POST token to backend `verifyToken`, get back {role, name, email}
+- Store token in sessionStorage (`ds.auth.token`) — survives reloads, dies on tab close
+- Add token to every apiClient call (Authorization header preferred, fallback to ?token= for Apps Script)
+- Handle token expiry: on 401, prompt re-auth with the GIS button
+
+**Role module update (scripts/roles.js):**
+- Change `getCurrentUserRecord` from name-based to email-based lookup
+- Add `getCurrentUserEmail()` reading from sessionStorage
+- Update the TODO marker in roles.js (it's there waiting)
+
+**Files needing updates:**
+- `backend/Code.gs` — verifyToken + gate wrappers + bump to 1.8
+- `scripts/apiClient.js` — attach token to every request
+- `scripts/screens/signin.js` — replace picker with GIS button
+- `scripts/currentUser.js` — replace localStorage name with sessionStorage token + email
+- `scripts/roles.js` — email-based lookup
+- `scripts/announcements.js` — `dismissedKey()` switches to email
+- `index.html` — load GIS script
+
+### Priority 2 — Dev "View as" picker (post-Sign-In)
+
+Brandon (dev only) needs to inspect other users' dashboards for debugging. Post-Sign-In, "Switch user" is gone — replaced with a dev-only "View as" affordance.
+
+**Design:**
+- Settings → Account → "View as user" (only shown for dev)
+- Opens a modal with the 19 users
+- Tap one → sessionStorage `ds.auth.viewAs` = `{email, name}` override
+- All API calls pass this email in `?viewAsEmail=` query param
+- Backend: if requesting user is dev, accept the override; otherwise ignore
+- UI shows a sticky banner: "Viewing as Cheyne — return to your view"
+- Tap banner clears the override
+
+**Important:** the dev user's real token still authenticates; the override only affects which user's *data* is fetched. Audit log captures both real-dev and viewed-as user.
+
+### Priority 3 — Face ID / PIN lock
+
+Pairs well with Sign-In since auth context is fresh.
+
+**Design:**
+- Optional setting: "Require Face ID to open the app"
+- Uses WebAuthn (`navigator.credentials.create` / `get`)
+- Triggers on PWA standalone open + after 15 min idle
+- Lock screen: just the Face ID prompt, no other UI
+- Fallback to passcode entry if Face ID fails 3 times (4-digit PIN stored hashed in localStorage)
+- Setting in Settings → Security → "Lock app with Face ID" toggle
+
+**Files:**
+- `scripts/lockScreen.js` (new) — WebAuthn flow + lock UI
+- `index.html` — lock-screen overlay element
+- `scripts/screens/settings.js` — toggle wiring
+- `scripts/app.js` — boot-time lock check + idle timer
+
+### Priority 4 — Extension reconnection
+
+The Chrome extension lives at `/Users/brandonbusler/Desktop/DealerScan-Migration/` — separate codebase. We left off mid-work there. Need to:
+
+1. Audit the extension's current state (manifest, background script, content script, popup)
+2. Verify Drive API calls still work with current Apps Script backend
+3. Check if extension uses the same auth as PWA (it should, after Sign-In)
+4. Test the full PWA-scan → extension-view flow end-to-end
+5. Update extension to recognize the new role system (managers/dev see more)
+
+**This is a separate session probably — extension audit is its own project. Don't start it until PWA Sign-In is solid.**
+
+---
+
+## ✅ Completed (full inventory at v=54)
 
 ### Core flow
-- ✅ Sign-in picker (19 hardcoded salespeople tiles)
-- ✅ Home screen (redesigned with timeline + counters + profile card)
-- ✅ Customer picker (fuzzy search, swipe-remove, clear-X button)
-- ✅ Title-case customer names (toggleable in settings)
-- ✅ Real camera capture with getUserMedia
-- ✅ Review screen with thumbnail grid + reorder + delete
-- ✅ Upload screen with deck-card animation + per-photo status
-- ✅ Done screen ("All set" / "Saved offline")
-- ✅ "Scan another for this customer" / "Different customer"
+- ✅ 19-tile sign-in picker (will be replaced by Google Sign-In)
+- ✅ Home screen redesigned (V2/V3 hybrid)
+- ✅ Customer picker with fuzzy search + swipe-remove + pending badges
+- ✅ Camera with real getUserMedia + iOS sketch suppression
+- ✅ Review with thumbnail grid + reorder + delete
+- ✅ Upload screen (parallel + compress + optimistic)
+- ✅ Done screen with queued state
+- ✅ Title-case customer names
 
-### Backend (Apps Script, deployed at v1.2)
-- ✅ `createCustomerFolder` with history update on every scan
-- ✅ `uploadPhoto`
-- ✅ `getCustomerHistory`
-- ✅ `hideCustomer` / `unhideCustomer` (PWA swipe-delete)
-- ✅ `getHomeOverview` (today/week/total/timeline/dailyCounts/peakHour/topCustomers)
-- ✅ `getVersion` (returns 1.2)
-- ✅ `getOverview` (legacy dashboard)
-- ✅ Vision API for OCR (in createCustomerFolder)
+### Performance
+- ✅ Shared data cache (home + dashboard reuse same fetch)
+- ✅ Parallel prefetch at boot
+- ✅ Backend CacheService for registry (5-min TTL)
+- ✅ Photo compression (6-10x payload reduction)
+- ✅ Parallel photo uploads
+- ✅ Optimistic UI (~700ms perceived time for 3-photo scan)
 
-### Polish & UX
-- ✅ Universal back button via `[data-back]` attribute
+### Offline / reliability
+- ✅ IndexedDB offline queue
+- ✅ Status strip queue indicator
+- ✅ Boot-time + online-event auto-drain with exponential backoff
+- ✅ Manual drain in Settings → Health
+- ✅ Drain progress + toast confirmation
+
+### Roles + dev panel
+- ✅ `_DealerScan_Users.json` registry with 16 users, 3 roles
+- ✅ Roles module with permission checks (hasPermission / hasPermissionSync)
+- ✅ Dev panel with user management (add / edit / deactivate)
+- ✅ Role badges (DEV red / MANAGER purple / SALES green)
+- ✅ Home screen subtitle shows role label (Dev / Manager / Salesperson)
+- ✅ Switch user hidden for non-dev (today's last commit)
+
+### Manager features
+- ✅ Backend `getTeamOverview` endpoint
+- ✅ Dashboard Team section (gated on viewAllData permission)
+- ✅ Team stat row (today / active / week)
+- ✅ Per-salesperson today bars (collapsible)
+- ✅ Recent across team (collapsible)
+- ✅ Inactive today (collapsible)
+- ✅ Customer search across team (pill bar at top of team section)
+- ✅ Home timeline shows team-wide scans with salesperson chip (for managers)
+
+### Announcements
+- ✅ Backend endpoints: listAnnouncements / createAnnouncement / deleteAnnouncement
+- ✅ Storage in `_DealerScan_Announcements.json`
+- ✅ Audience: all / specific users
+- ✅ TTL: 1h / 4h / 24h / 72h
+- ✅ Auto-prune expired on every list
+- ✅ Compose modal (manager + dev only via quick menu)
+- ✅ Home banner with 6s auto-dismiss
+- ✅ Per-user dismiss tracking via scoped localStorage keys
+
+### UI polish
+- ✅ Bottom band killed (solid bg, no gradient)
+- ✅ Dashboard spacing tightened
+- ✅ Team cards collapsed by default with live count summaries
+- ✅ Settings → Health diagnostics
+- ✅ 5 accent color swatches
 - ✅ Custom toggle switches with iOS spring easing
-- ✅ Accent color picker (5 ramps, persists in localStorage)
-- ✅ Custom toast system with undo action support
-- ✅ Skeleton loaders + spinner loaders for transitions
-- ✅ Per-row animated entrance with sequenced dot pops
-- ✅ All passive animations behind prefers-reduced-motion gate
-
-### Infrastructure
-- ✅ Domain `dealerscan.live` + GitHub Pages + HTTPS
-- ✅ Cache-busting via `?v=N` query strings (currently v=38)
-- ✅ Error reporting to backend (fire-and-forget)
-- ✅ Version drift detection (boot-time + Settings → About)
-- ✅ Preconnect to Apps Script for faster first request
-
-### Reliability (Concept C phase 1)
-- ✅ Offline queue (IndexedDB)
-- ✅ Status strip "Offline · N queued" indicator
-- ✅ Boot-time + online-event auto-drain
-- ✅ Exponential backoff (60s × 2^attempts, capped at 1hr)
-- ✅ Manual drain button in Settings → Health
-- ✅ Connection / queue / storage diagnostics in Settings
+- ✅ Toast system with undo
+- ✅ Skeleton loaders
+- ✅ Timeline row sequenced spring entrance + dot pop
+- ✅ Passive ambient animations
 
 ---
 
-## 🔜 Next-up (priority order)
+## ⚠️ Open concerns for tomorrow
 
-### 1. Google Sign-In (decided: Path B — explicit allow-list)
-Replaces the 19-tile picker entirely. Pre-populated registry approach
-in `_DealerScan_Users.json` (already exists in SYSTEM_FOLDER_ID).
-
-Path B = no domain restriction, any Gmail OK, allow-list lookup in the
-JSON file. Each email maps to a salesperson name.
-
-Needs:
-- Google Cloud Console OAuth client ID (Brandon's action)
-- Backend: `verifyToken` action + token validation gate on all other actions
-- Frontend: replace `signin.js` picker with Google Identity Services button
-- Token storage in sessionStorage with refresh on expiry
-
-### 2. Edge detection / auto-crop (Concept A — phase 1)
-The highest-value piece of Concept A, shippable standalone. Brandon
-flagged this as the most interesting feature when reviewing the
-mockups. Investigation needed for tomorrow's session:
-- jscanify on mobile web — is it performant enough?
-- Alternative: OpenCV.js (heavier but proven)
-- Simpler approach: corner detection via canvas pixel sampling
-- Quality gate (blur + lighting detection) is a related cheap win
-
-### 3. Face ID / PIN lock (Concept C phase 2)
-WebAuthn for biometric prompt. Auto-lock after 15min idle. Store
-lastActiveAt in localStorage, check on boot. Skipped tonight due to
-complexity; will pair well with Google Sign-In since auth context will
-already be top-of-mind.
+1. **Test the extension still works** — we haven't touched it in days. Make sure scans show up correctly.
+2. **Document the "Save as JSON in SYSTEM_FOLDER" pattern** — we're using this for users + announcements; if it grows we may want a proper DB.
+3. **Audit error reporting** — make sure new endpoints (announcements, registry, team) all log errors to `_DealerScan_Events`.
+4. **Service Worker still NOT shipped** — intentional. Add when offline support needs to extend to JS bundles.
 
 ---
 
-## 🔮 Future (queued in priority order)
+## How to resume tomorrow
 
-### Concept A — Smart Capture (full)
-- Quality gate (blur / lighting detection before upload) — easy
-- Multi-page combine into single PDF — medium
-- Voice dictation for customer name — easy
-- Quick scan templates ("License + Insurance" preset) — medium
+1. Brandon gets the OAuth Client ID from Google Cloud Console (5 min)
+2. Open this file + read backwards through SOLO-SESSION-LOG.md for recent context
+3. Start with backend `verifyToken` — it's the foundation of everything else
+4. Build PWA Sign-In flow on top of that
+5. Then "View as" picker (uses Sign-In's identity)
+6. Then Face ID (uses Sign-In's identity)
+7. Save extension reconnection for a dedicated session
 
-### Concept B — Customer Memory (full)
-- New `CustomerProfile` sheet in backend
-- Customer profile cards with vehicle / status / notes
-- Required-docs checklist per customer type
-- Follow-up reminder notifications
-- Quick handoff to coworker
-
-### Concept C — remaining pieces
-- Bandwidth-aware compression (auto-resize on weak signal)
-- Activity audit log (who scanned what, when)
-- Pre-staged manager dashboard (see across all 19 salespeople)
-
-### Out of scope (codified)
-- Folder browsing in PWA — belongs in the Chrome extension
-- jscanify desktop — covered by extension
-- Multi-orientation camera — single rear-cam orientation only
-
----
-
-## How to test offline mode locally
-
-1. Open `https://dealerscan.live` on iPhone in standalone PWA mode
-2. Toggle Airplane mode ON
-3. Tap New Scan, pick a customer, take 1-2 photos, tap Upload
-4. Done screen should say "Saved offline · Will upload when back online"
-5. Home screen status strip should say "Offline · 1 queued"
-6. Settings → Health should show the queued customer name
-7. Toggle Airplane mode OFF
-8. Watch the status strip flip: "Syncing · 1 queued" → "Synced"
-9. The scan should appear in the customer's Drive folder
-
----
-
-## Backend deploy reminder
-
-`backend/Code.gs` currently at version 1.2 (deployed). If you make
-backend changes:
-1. Bump `getVersion` return value (e.g., 1.2 → 1.3)
-2. Bump `EXPECTED_BACKEND_VERSION` in `scripts/versionCheck.js`
-3. Paste `Code.gs` into Apps Script editor
-4. Deploy → Manage deployments → Edit existing → Version: New → Deploy
-5. The PWA's Settings → About will show green "deployed 1.3 ✓"
+If at any point the app breaks during Sign-In work, the easiest rollback is reverting to commit `90eac2c` (or whatever today's last commit ends up being) on main. Sign-In should ship as a single atomic commit — don't push half-builds.

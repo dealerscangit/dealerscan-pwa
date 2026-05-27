@@ -1,4 +1,5 @@
 import { updateAnnouncementMenuVisibility } from "../announcements.js";
+import { hasPermissionSync } from "../roles.js";
 // scripts/screens/quickMenu.js
 // Popover menu anchored to the kebab button on the home screen.
 // Opens via attachQuickMenuHandlers(showScreen, session) which wires
@@ -38,9 +39,16 @@ function openMenu() {
   const menu = document.getElementById("quick-menu");
   if (!menu) return;
   // Refresh role-gated items each time so a user-switch is reflected
-  // without a page reload. The announce item is shown only for users
-  // with managerActions permission.
+  // without a page reload.
   updateAnnouncementMenuVisibility();
+
+  // Switch user is dev-only — sales and managers shouldn't be hopping
+  // between identities. Pre-Sign-In: keeps Bryant the manager from
+  // accidentally (or intentionally) picking Brandons tile and gaining
+  // dev access. Post-Sign-In: becomes Sign out for everyone.
+  const switchItem = menu.querySelector('[data-menu-action="switch-user"]');
+  if (switchItem) switchItem.hidden = !hasPermissionSync("manageUsers");
+
   menu.classList.remove("closing");
   menu.hidden = false;
 }
