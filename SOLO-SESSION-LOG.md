@@ -181,3 +181,72 @@ should pinpoint where it broke.
 - The stub uploads SVG data URLs as "photos" — Drive will accept them but
   they'll be 1-2KB SVG files, not real JPEG photos. Vision API auto-naming
   will likely fall back to "Doc N" since there's no real image to detect.
+
+---
+
+## Session: 2026-05-26 evening — design overhaul + Concept C ship
+
+Started: 17:00ish. Ended: 22:45ish.
+Cache-bust progression: v=22 → v=38 (16 ships).
+Backend: 1.0 → 1.2 (redeployed by Brandon during session).
+
+### The big wins
+1. **Full home screen redesign (V2/V3 hybrid)** — pinned status strip,
+   profile card, tab pills, threaded timeline, red beacon CTA. Locked
+   the design direction by showing Brandon two mockup variants (blue
+   vs red CTA) and letting him pick — he picked red.
+2. **Settings + dashboard + quick menu (kebab popover)** — three new
+   screens / components shipped end-to-end.
+3. **Six passive ambient animations** — all behind prefers-reduced-motion.
+4. **Concept C phase 1: offline queue** — IndexedDB-backed sync queue
+   with status strip indicator + boot drain + manual drain button.
+5. **iOS PWA bottom band finally killed** — pulled `.camera-stage` and
+   `.quick-menu` INTO the safe-area-inset-bottom zone via negative
+   margins because iOS resolves 100dvh / inset: 0 to the visible
+   viewport in standalone mode.
+
+### Lessons logged (for future Claude)
+- **iOS PWA layout quirks**: 100dvh, inset: 0, and flex: 1 all
+  resolve to the VISIBLE viewport in standalone mode — NOT including
+  the home indicator. Negative margin/bottom is the only reliable way
+  to extend visual content under the home indicator.
+- **safe-area-inset cannot be applied at multiple levels** — pick ONE
+  source of truth or it stacks. Body had it, main had it, status
+  strip had it — three layers stacked to ~140px of phantom padding.
+- **iOS Safari does NOT support navigator.vibrate** — Apple removed
+  the Vibration API. Detect iOS via UA + maxTouchPoints and either
+  hide the haptic toggle or no-op the call.
+- **iOS WebKit renders `<video>` at intrinsic 0x0** until
+  loadedmetadata. Fix with explicit min-width/min-height: 100% +
+  object-fit cover so layout is correct from frame 1, plus a `.ready`
+  class applied inside double requestAnimationFrame.
+- **Swipe-action background bleed**: keep spacing on PARENT (flex gap),
+  not children (margin), so it lives outside the swipe-wrap.
+- **`.swipe-wrap` border-radius must match the inner card** — 4px
+  mismatch causes dark pixel corners showing the foreground bg.
+- **HTTPS check FIRST before assuming camera broken** — mediaDevices
+  requires secure context.
+- **Apps Script ownership can be in workspace account, not personal**
+  — when "script.google.com is empty," check which Google account.
+- **Always edit EXISTING deployment** in Apps Script (pencil icon →
+  New version), NEVER click "New deployment" or the URL changes.
+- **Cache-first then refresh** is the right pattern for app screens —
+  paint from cache instantly, fetch fresh in background, only show
+  spinners when there's no cache.
+- **Minimum visible time for loading states (400ms)** — fast networks
+  can finish requests below the human perception threshold, making
+  loading states invisible. Enforce a minimum delay before paint.
+- **PWA Service Worker NOT shipped intentionally** — service workers
+  cache aggressively and would make our `?v=N` cache-busting harder
+  to reason about. Will add when offline support needs to extend to
+  the JS bundles, not just the API responses.
+
+### What changed compared to the start-of-day plan
+- Brandon picked the V2/V3 hybrid redesign mid-day — not in the
+  original plan. Big rewrite but worth it.
+- Concept brainstorm + 3 concept mockups added at end of day — wasn't
+  in the morning plan but cleanly set up tomorrow's work.
+- Offline queue (Concept C phase 1) was originally not until next
+  week — moved up because rollout to 19 salespeople is imminent and
+  the dealership service drive has poor cellular.
+

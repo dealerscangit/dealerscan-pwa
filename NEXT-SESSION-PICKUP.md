@@ -1,149 +1,225 @@
 # NEXT-SESSION-PICKUP.md
 
-Picking up the **DealerScan PWA** project. This is a separate codebase from
-the migration repo (which holds the extension), per the 2026-04-30 decision
-to keep the two concerns clean.
+Last updated: end of 2026-05-26 evening session (v=38 shipped).
 
-**Repo:** `github.com/dealerscangit/dealerscan-pwa` (public — GH Pages requires it)
+**Repo:** `github.com/dealerscangit/dealerscan-pwa` (public)
 **Live URL:** `https://dealerscan.live`
 **Local working dir:** `/Users/brandonbusler/Desktop/dealerscan-pwa`
+**Latest cache-bust:** `v=38`
+**Backend deployed version:** `1.2`
 
 ---
 
-## Where we left off (end of 2026-05-25 session)
+## State of the app as of end of this session
 
-**One full screen shipped, infrastructure complete, ready to build the next 6 screens.**
+The PWA is now substantially polished and feature-complete for v1 rollout.
+Just shipped a major polish + redesign + reliability pass:
 
-- ✅ Repo created, 17 commits, on `main` (no feature branches yet)
-- ✅ Domain `dealerscan.live` bought from Squarespace, 4 A records pointing
-  to GitHub Pages (185.199.108–111.153)
-- ✅ GitHub Pages configured with custom domain
-- ✅ HTTPS cert provisioning was still in progress at end of session — check
-  `github.com/dealerscangit/dealerscan-pwa/settings/pages` to confirm green
-  checkmark + "Enforce HTTPS" available
-- ✅ Sign-in screen (screen 1 of 7) — 3-column tile picker, all 19 salespeople,
-  one-tap select, persisted in localStorage
-- ✅ Extension-matched design language adopted (navy gradient + glass cards +
-  Google-blue accent + SF Pro typography, tokens lifted from
-  `DealerScan-Migration/new-source/overlay.css`)
-- ✅ Icons copied from Chrome extension (icon128 upscaled to 192/512/maskable-512)
-- ✅ Tested on real iPhone, installed as PWA via Add to Home Screen
-- ✅ DEV-AFFORDANCES.md tracking doc maintained (see file for cleanup checklist
-  before public launch)
+### Home screen — fully redesigned (V2/V3 hybrid)
+- Pinned status strip (top): status dot + label + settings gear
+- Profile card: avatar + name + role + today's count
+- Tab-pill counters: today / week / total
+- Threaded vertical timeline: rows with avatars + name + photo count
+  subtitle + timestamp, dot connectors with fade gradient line
+- Split CTA: red "New scan" beacon + kebab menu button
+- Smart loading: spinners on initial fetch with 400ms minimum visible
+  time, cached re-renders paint instantly
 
----
+### Camera screen
+- Full-bleed black stage extending under home indicator (no rounded
+  corner band)
+- iOS Sketch callout suppressed via user-select: none
+- "Preparing camera..." overlay during silent permission re-acquire
+- Done button nudge animation after each capture
+- iOS-aware haptic toggle (hidden on iOS where vibrate is unsupported)
 
-## Open decisions from this session, locked in
+### Settings screen
+- Appearance: 5 accent color swatches (blue / purple / teal / amber / rose)
+  with live CSS variable swap
+- Behavior: haptics toggle (hidden iOS), nudge toggle, title-case toggle
+- Account: signed-in identity, switch user
+- **Health: connection status, offline queue contents, manual Drain Now
+  button, storage estimate** (added this session)
+- About: PWA version, live backend version check with "Redeploy needed"
+  message when mismatched
 
-- **Auth strategy v1:** name picker stored in localStorage. v2 will replace
-  with Google Sign-In, swapping only the `currentUser.js` abstraction.
-- **Color mode:** dark, but not pure black — adopted extension's navy gradient
-  for brand cohesion.
-- **Scope:** hybrid — building UI architecture for the bigger v1 (multi-photo,
-  edit before upload) but shipping the moment one full upload flow works.
-- **No service worker** in v1. Trade Android install banner for instant OTA
-  updates via push-to-main.
-- **Switch user affordance:** hidden in production. Dev-only "Sign out" link
-  on the home screen for now (logged in DEV-AFFORDANCES.md for cleanup).
+### Dashboard screen
+- Week chart: 7 vertical bars with today highlighted, animate from 0 height
+- Stat row: peak hour, avg docs / customer, scans this week
+- Top customers list (top 3 by photo count, with rank badges)
+- Spinners on initial load with 400ms minimum visible time
 
----
+### Quick menu (kebab popover)
+- Anchored to the kebab button, animates scale+opacity from corner
+- Items: Dashboard, Search, Switch user, Help, Report issue
+- Smooth open + close animations
+- Backdrop dismisses on tap, extends through safe-area-inset-bottom
 
-## Still open (decide next session)
+### Offline queue (NEW this session — Concept C phase 1)
+- IndexedDB-backed queue for scans captured offline
+- Upload flow detects `!navigator.onLine` and queues instead of failing
+- Status strip shows "Offline · N queued" so users know their work is safe
+- Boot-time + online-event auto-drain with exponential backoff
+- Manual "Drain now" button in Settings → Health
+- Done screen shows "Saved offline · will upload when back online" with
+  amber check icon when queued
 
-- **Brandon's customer history.** The smoke test of `getHistory?salesName=Brandon`
-  returned only "New Customer" — no actual history. Three possibilities:
-  (1) Brandon never personally uses the Shortcut so genuine empty state,
-  (2) backend stores names differently and "Brandon" doesn't match, or
-  (3) backend bug. Need to run the same call for a heavy-Shortcut-user
-  (Frank? Yusuf?) before building the customer screen. **Quinn flagged this.**
-- **Typo on roster:** "Keith" vs "Kieth" — Brandon wrote Kieth in the original
-  list; I corrected to Keith. Confirm before launch.
-- **Vision API key on backend.** Pickup doc from the migration project flagged
-  that the old key was deleted. Need to confirm the new `dealerscan-prod`
-  project has a working key wired up to `getVisionApiKey()` — otherwise
-  driver's license auto-naming silently degrades to "Doc N". Not blocking
-  PWA work but blocks ship quality.
-- **Phase 4B.7 security debt:** auth tokens passed as URL query params on
-  both extension and PWA endpoints. Should move to POST body / Authorization
-  header before public launch.
+### Passive animations
+- Background color blooms drift (18s)
+- Status dot breathing when synced (4s)
+- Timeline thread comet (7s)
+- Profile card avatar gradient shift (12s)
+- Red CTA beacon pulse (5s)
+- Counter pill active highlight (6s)
+- All wrapped in `@media (prefers-reduced-motion: no-preference)`
 
----
+### Performance work shipped
+- Preconnect / dns-prefetch to script.google.com (saves ~100-300ms on
+  first API call)
+- Cache-first paint, then refresh in background
+- Single round-trip `getHomeOverview` endpoint (today/week/total/
+  timeline/dailyCounts/peakHour/topCustomers all in one call)
+- Fallback path to legacy `getHistory` if backend is stale
 
-## Known cosmetic issue (deferred)
-
-Faint color seam between the gradient bottom and the iOS home-indicator zone
-on installed PWA. Tried 3 fixes, got close but not invisible. See
-DEV-AFFORDANCES.md "Known issues" section for the three approaches we haven't
-tried yet. Not blocking ship.
-
----
-
-## Build sequence — screens remaining
-
-We're 1 of 7 done. Sequential build order based on the Shortcut walkthrough
-Brandon described:
-
-2. **Home screen** — replace the scaffolding note. Big "New Scan" affordance,
-   maybe a recent-activity peek. Sage will use the extension's card patterns
-   from `overlay.css` (`.suggested-folder`, `.manager-recent-card`) for
-   consistency.
-3. **Customer picker / new customer** — text input + history autocomplete
-   from `apiClient.getCustomerHistory(salesName)`. "+ New Customer" tile to
-   start a fresh folder. Backend call patterns already wrapped.
-4. **Camera screen** — `getUserMedia()` viewfinder, tap to capture, no iOS
-   "Use Photo" gate, thumbnail strip showing photos taken so far. This is the
-   hardest screen — iOS Safari standalone has known quirks with camera
-   permission prompts. Budget ~2 hours for this one alone.
-5. **Review screen** — photos as a scrollable strip, tap to retake / delete /
-   reorder before upload commits.
-6. **Upload screen** — per-photo progress, calls `apiClient.uploadPhoto()` in
-   sequence (parallel might race the backend's folder lookup).
-7. **Done screen** — checkmark, customer name, "Scan another?" button that
-   resets to the customer picker.
-
-Ship moment is whenever one full single-photo flow works end-to-end. The
-multi-photo queue can ship as v1.1 the next day. Brandon's pacing note from
-the project: "we rolled out and then like 3 days later we stopped, i gotta
-be quick to keep the interest of the people." Don't over-polish before phones
-have it.
+### Bug fixes shipped
+- Triple-counted safe-area-inset-top (status strip was huge)
+- Camera stutter on first load (intrinsic 0x0 video element)
+- Pink swipe action bleeding through translucent timeline cards
+- Dark pixel corners on timeline rows (swipe-wrap radius mismatch)
+- Bottom band on iOS PWA home indicator zone (negative margin trick)
+- Screen transition translateY revealing body bg
+- Timeline dot clipping (now sibling of swipe-wrap)
 
 ---
 
-## How to resume
+## ✅ Completed (full feature inventory)
 
-**On `dealerscan-pwa` branch:** `phase-4b-proxy` is the migration repo, not
-this one. The PWA has no feature branches yet — work happens on `main`
-directly until the project gets more contributors.
+### Core flow
+- ✅ Sign-in picker (19 hardcoded salespeople tiles)
+- ✅ Home screen (redesigned with timeline + counters + profile card)
+- ✅ Customer picker (fuzzy search, swipe-remove, clear-X button)
+- ✅ Title-case customer names (toggleable in settings)
+- ✅ Real camera capture with getUserMedia
+- ✅ Review screen with thumbnail grid + reorder + delete
+- ✅ Upload screen with deck-card animation + per-photo status
+- ✅ Done screen ("All set" / "Saved offline")
+- ✅ "Scan another for this customer" / "Different customer"
 
-**To start:**
-1. Read this file (you're already here)
-2. Open `DEV-AFFORDANCES.md` to refresh on what's temp code
-3. Glance at `index.html` to see the screen scaffolding
-4. Verify HTTPS is green on `github.com/dealerscangit/dealerscan-pwa/settings/pages`
-   — if it is, enable "Enforce HTTPS"
-5. Re-verify the backend is alive: `curl 'https://script.google.com/macros/s/AKfycbzF13p-WRJloMRBoWiQ4h6EmR7iylkVoGxX0Y9PBpEN0RacIvfxoN_Hd15NJUSYpsQJug/exec?action=getHistory&salesName=Frank'`
-   (substitute a real heavy user — see "Brandon's customer history" above)
-6. Pick up at screen 2 (home screen).
+### Backend (Apps Script, deployed at v1.2)
+- ✅ `createCustomerFolder` with history update on every scan
+- ✅ `uploadPhoto`
+- ✅ `getCustomerHistory`
+- ✅ `hideCustomer` / `unhideCustomer` (PWA swipe-delete)
+- ✅ `getHomeOverview` (today/week/total/timeline/dailyCounts/peakHour/topCustomers)
+- ✅ `getVersion` (returns 1.2)
+- ✅ `getOverview` (legacy dashboard)
+- ✅ Vision API for OCR (in createCustomerFolder)
+
+### Polish & UX
+- ✅ Universal back button via `[data-back]` attribute
+- ✅ Custom toggle switches with iOS spring easing
+- ✅ Accent color picker (5 ramps, persists in localStorage)
+- ✅ Custom toast system with undo action support
+- ✅ Skeleton loaders + spinner loaders for transitions
+- ✅ Per-row animated entrance with sequenced dot pops
+- ✅ All passive animations behind prefers-reduced-motion gate
+
+### Infrastructure
+- ✅ Domain `dealerscan.live` + GitHub Pages + HTTPS
+- ✅ Cache-busting via `?v=N` query strings (currently v=38)
+- ✅ Error reporting to backend (fire-and-forget)
+- ✅ Version drift detection (boot-time + Settings → About)
+- ✅ Preconnect to Apps Script for faster first request
+
+### Reliability (Concept C phase 1)
+- ✅ Offline queue (IndexedDB)
+- ✅ Status strip "Offline · N queued" indicator
+- ✅ Boot-time + online-event auto-drain
+- ✅ Exponential backoff (60s × 2^attempts, capped at 1hr)
+- ✅ Manual drain button in Settings → Health
+- ✅ Connection / queue / storage diagnostics in Settings
 
 ---
 
-## Lessons from this session (so future-Claude doesn't repeat them)
+## 🔜 Next-up (priority order)
 
-- **iOS Safari aggressively caches CSS/JS.** Every visual change needs a
-  fresh `?v=N` query string on the CSS link or phones won't see updates.
-  Long-term fix: build step that hashes file content. For now, manual.
-- **iOS rubber-band overscroll exposes the viewport background.** Use
-  `overscroll-behavior-y: none` on html/body to disable it. Most native iOS
-  apps disable this; users don't miss it.
-- **iOS PWA standalone mode `100dvh` doesn't always cover the home indicator
-  zone.** Use a `position: fixed` pseudo-element with `inset: 0` as the
-  background layer for true full-screen coverage.
-- **iOS caches the manifest at PWA install time and doesn't re-read on
-  relaunch.** When changing icons or theme color, the user has to delete
-  the PWA from home screen and reinstall via Add to Home Screen.
-- **Don't pre-populate the home screen with assumptions.** First proposed
-  pure-black + violet design was wrong because it ignored the existing
-  extension's brand. Verify before designing.
-- **The picker UX I designed was almost throwaway.** When auth is going to
-  Google Sign-In in v2, the whole name picker disappears. Brandon caught it
-  with one question. Logged as throwaway in DEV-AFFORDANCES.md.
+### 1. Google Sign-In (decided: Path B — explicit allow-list)
+Replaces the 19-tile picker entirely. Pre-populated registry approach
+in `_DealerScan_Users.json` (already exists in SYSTEM_FOLDER_ID).
+
+Path B = no domain restriction, any Gmail OK, allow-list lookup in the
+JSON file. Each email maps to a salesperson name.
+
+Needs:
+- Google Cloud Console OAuth client ID (Brandon's action)
+- Backend: `verifyToken` action + token validation gate on all other actions
+- Frontend: replace `signin.js` picker with Google Identity Services button
+- Token storage in sessionStorage with refresh on expiry
+
+### 2. Edge detection / auto-crop (Concept A — phase 1)
+The highest-value piece of Concept A, shippable standalone. Brandon
+flagged this as the most interesting feature when reviewing the
+mockups. Investigation needed for tomorrow's session:
+- jscanify on mobile web — is it performant enough?
+- Alternative: OpenCV.js (heavier but proven)
+- Simpler approach: corner detection via canvas pixel sampling
+- Quality gate (blur + lighting detection) is a related cheap win
+
+### 3. Face ID / PIN lock (Concept C phase 2)
+WebAuthn for biometric prompt. Auto-lock after 15min idle. Store
+lastActiveAt in localStorage, check on boot. Skipped tonight due to
+complexity; will pair well with Google Sign-In since auth context will
+already be top-of-mind.
+
+---
+
+## 🔮 Future (queued in priority order)
+
+### Concept A — Smart Capture (full)
+- Quality gate (blur / lighting detection before upload) — easy
+- Multi-page combine into single PDF — medium
+- Voice dictation for customer name — easy
+- Quick scan templates ("License + Insurance" preset) — medium
+
+### Concept B — Customer Memory (full)
+- New `CustomerProfile` sheet in backend
+- Customer profile cards with vehicle / status / notes
+- Required-docs checklist per customer type
+- Follow-up reminder notifications
+- Quick handoff to coworker
+
+### Concept C — remaining pieces
+- Bandwidth-aware compression (auto-resize on weak signal)
+- Activity audit log (who scanned what, when)
+- Pre-staged manager dashboard (see across all 19 salespeople)
+
+### Out of scope (codified)
+- Folder browsing in PWA — belongs in the Chrome extension
+- jscanify desktop — covered by extension
+- Multi-orientation camera — single rear-cam orientation only
+
+---
+
+## How to test offline mode locally
+
+1. Open `https://dealerscan.live` on iPhone in standalone PWA mode
+2. Toggle Airplane mode ON
+3. Tap New Scan, pick a customer, take 1-2 photos, tap Upload
+4. Done screen should say "Saved offline · Will upload when back online"
+5. Home screen status strip should say "Offline · 1 queued"
+6. Settings → Health should show the queued customer name
+7. Toggle Airplane mode OFF
+8. Watch the status strip flip: "Syncing · 1 queued" → "Synced"
+9. The scan should appear in the customer's Drive folder
+
+---
+
+## Backend deploy reminder
+
+`backend/Code.gs` currently at version 1.2 (deployed). If you make
+backend changes:
+1. Bump `getVersion` return value (e.g., 1.2 → 1.3)
+2. Bump `EXPECTED_BACKEND_VERSION` in `scripts/versionCheck.js`
+3. Paste `Code.gs` into Apps Script editor
+4. Deploy → Manage deployments → Edit existing → Version: New → Deploy
+5. The PWA's Settings → About will show green "deployed 1.3 ✓"
