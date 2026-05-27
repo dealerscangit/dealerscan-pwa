@@ -47,7 +47,11 @@ function openMenu() {
   // accidentally (or intentionally) picking Brandons tile and gaining
   // dev access. Post-Sign-In: becomes Sign out for everyone.
   const switchItem = menu.querySelector('[data-menu-action="switch-user"]');
-  if (switchItem) switchItem.hidden = !hasPermissionSync("manageUsers");
+  if (switchItem) {
+    // Dev impersonating a non-dev still keeps switch via the session flag
+    const isDevSession = sessionStorage.getItem("ds.dev_session") === "1";
+    switchItem.hidden = !hasPermissionSync("manageUsers") && !isDevSession;
+  }
 
   menu.classList.remove("closing");
   menu.hidden = false;

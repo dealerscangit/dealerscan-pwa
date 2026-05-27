@@ -170,7 +170,11 @@ export function renderSettings() {
   // a separate "View as" affordance to inspect other users dashboards.
   const switchBtn = document.getElementById("settings-switch-user");
   if (switchBtn) {
-    switchBtn.hidden = !hasPermissionSync("manageUsers");
+    // Dev can still switch even after impersonating a non-dev user.
+    // The flag is set in signin.js on dev sign-in and persists across
+    // switches until tab close.
+    const isDevSession = sessionStorage.getItem("ds.dev_session") === "1";
+    switchBtn.hidden = !hasPermissionSync("manageUsers") && !isDevSession;
     switchBtn.onclick = () => {
       clearCurrentSalesperson();
       _showScreen("signin");
