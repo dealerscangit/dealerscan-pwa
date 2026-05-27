@@ -108,6 +108,9 @@ async function renderOverview() {
     paintCounters(_overviewCache);
     paintTimeline(_overviewCache.timeline);
   } else {
+    // No cache — show spinners in all counters and a skeleton timeline.
+    // Loading state must be immediately visible, even if the network is fast.
+    paintLoadingSpinners();
     paintSkeleton();
   }
 
@@ -118,8 +121,18 @@ async function renderOverview() {
   }
 
   setSyncing(true);
+  const fetchStart = Date.now();
   try {
     const data = await getHomeOverview(sp);
+    // Enforce minimum spinner visible time so very fast fetches still
+    // show a perceptible loading state. 400ms = the just-noticeable
+    // threshold for state changes; lower feels jarringly instant.
+    if (!_overviewCache) {
+      const elapsed = Date.now() - fetchStart;
+      if (elapsed < 400) {
+        await new Promise((r) => setTimeout(r, 400 - elapsed));
+      }
+    }
     _overviewCache = data;
     paintCounters(data);
     paintTimeline(data.timeline);
@@ -131,6 +144,17 @@ async function renderOverview() {
   } finally {
     setSyncing(false);
   }
+}
+
+// Paint loading spinners into every counter field. Called when there is no
+// cached data yet so the screen has a clear "loading" state even on slow nets.
+function paintLoadingSpinners() {
+  const big = document.getElementById("stat-today-value");
+  if (big) big.innerHTML = '<span class="loading-spinner lg"></span>';
+  ["pill-today-value", "pill-week-value", "pill-total-value"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<span class="loading-spinner"></span>';
+  });
 }
 
 function paintCounters({ today, week, total }) {
@@ -226,16 +250,33 @@ function buildTimelineRow(entry) {
   avatar.className = "timeline-row-avatar";
   avatar.textContent = (entry.customer || "?").charAt(0).toUpperCase();
 
+  // Text block (two lines): name on top, photo count subtitle on bottom.
+  // This eliminates the visual "weird gap" when names are short because
+  // the subtitle naturally fills the bottom line even when the customer
+  // has a 4-character name.
+  const textBlock = document.createElement("span");
+  textBlock.className = "timeline-row-text";
+
   const name = document.createElement("span");
   name.className = "timeline-row-name";
   name.textContent = entry.customer || "(unknown)";
+
+  const subtitle = document.createElement("span");
+  subtitle.className = "timeline-row-subtitle";
+  const photoCount = entry.photoCount || 0;
+  subtitle.textContent = photoCount
+    ? `${photoCount} ${photoCount === 1 ? "doc" : "docs"}`
+    : "scan";
+
+  textBlock.appendChild(name);
+  textBlock.appendChild(subtitle);
 
   const time = document.createElement("span");
   time.className = "timeline-row-time";
   time.textContent = formatTimestamp(entry.timestamp);
 
   card.appendChild(avatar);
-  card.appendChild(name);
+  card.appendChild(textBlock);
   card.appendChild(time);
   row.appendChild(card);
 
