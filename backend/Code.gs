@@ -501,14 +501,51 @@ function getHomeOverview(e) {
       }
     }
 
-    // Timeline (today only, deduped by customer, newest first, top 8)
+    // Timeline: dedup todays scans by customer (newest first), then filter
+    // to ONLY customers present in CustomerHistory. This is the key fix —
+    // ScanLog is the permanent event log, but CustomerHistory is the curated
+    // active list. Manual deletes from CustomerHistory should hide the row
+    // from the home timeline even if their ScanLog entries persist.
+    //
+    // Data sources by purpose:
+    //   - Home timeline : ScanLog ENRICH-FILTERED by CustomerHistory
+    //   - Counters      : ScanLog raw (every event counts)
+    //   - Picker        : CustomerHistory only
+    //   - Dashboard team: ScanLog raw (cross-team activity)
     var byCustomer = {};
     todayScans.forEach(function(s) {
       if (!byCustomer[s.customer] || s.timestamp > byCustomer[s.customer].timestamp) {
         byCustomer[s.customer] = s;
       }
     });
+
+    // Read CustomerHistory for this salesperson — names only
+    var historySheet = ss.getSheetByName(HISTORY_SHEET_NAME);
+    var activeCustomers = {};
+    if (historySheet) {
+      var hdata = historySheet.getDataRange().getValues();
+      for (var hi = 0; hi < hdata.length; hi++) {
+        if (hdata[hi][0] && hdata[hi][0].toString().trim() === salesName) {
+          // Columns B onwards are customer names in recency order
+          for (var hc = 1; hc < hdata[hi].length; hc++) {
+            var nm = (hdata[hi][hc] || "").toString().trim();
+            if (nm) activeCustomers[nm.toLowerCase()] = true;
+          }
+          break;
+        }
+      }
+    }
+    var hasHistory = Object.keys(activeCustomers).length > 0;
+
     var timeline = Object.keys(byCustomer).map(function(k) { return byCustomer[k]; });
+    // If the salesperson has a CustomerHistory row, filter timeline to those
+    // names only. If they have NO row (new user or fully cleared), fall
+    // through and show all of todays scans — better than showing nothing.
+    if (hasHistory) {
+      timeline = timeline.filter(function(s) {
+        return activeCustomers[(s.customer || "").toLowerCase()] === true;
+      });
+    }
     timeline.sort(function(a, b) { return b.timestamp - a.timestamp; });
     timeline = timeline.slice(0, 8).map(function(s) {
       return {
@@ -696,7 +733,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.9"); }
+function getVersion(e) { return ContentService.createTextOutput("1.10"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
