@@ -86,23 +86,22 @@
 
 html {
   margin: 0; padding: 0;
-  /* min-height (not height) lets the html grow with content if needed,
-     but always covers the dynamic viewport. dvh handles iOS URL bar
-     show/hide so the gradient never gets cut off. */
+  /* Use lvh (large viewport height) which is ALWAYS the full screen
+     including under the home indicator. dvh resolves to the visible
+     viewport in iOS PWA standalone, leaving the home indicator strip
+     showing the OS default bg — visible as a faint band. */
   min-height: 100%;
-  min-height: 100dvh;
+  min-height: 100lvh;
   background: var(--bg-gradient);
   background-color: var(--bg-bottom);
   overscroll-behavior-y: none;
 }
 body {
   margin: 0; padding: 0;
+  /* Use dvh for layout (content respects URL bar show/hide) but the
+     background layer (body::before below) uses lvh to cover the full
+     screen including the home indicator strip. */
   height: 100vh; height: 100dvh;
-  /* Solid bg-bottom navy so the safe-area-inset-bottom zone (under the iOS
-     home indicator) always matches the bottom of the gradient. Without this,
-     iOS PWA's html element doesn't extend the gradient under the home
-     indicator and the OS-default color (or transparent through to nothing)
-     shows as a faint band at the screen bottom. */
   background-color: var(--bg-bottom);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
@@ -121,16 +120,16 @@ body {
 }
 body::before {
   content: '';
-  /* Fixed gradient layer behind all content. Explicit height: 100dvh
-     instead of bottom: 0 so it covers the full dynamic viewport including
-     under the home indicator zone — bottom: 0 can be interpreted by iOS
-     WebKit as the bottom of the visible safe area, leaving the home
-     indicator strip uncovered. */
+  /* Fixed gradient layer behind all content. Uses lvh (large viewport
+     height — always the maximum possible) so it covers the home indicator
+     zone. dvh would resolve to the visible viewport in iOS PWA standalone,
+     leaving the home indicator strip uncovered. lvh fixes the persistent
+     "thin darker band at the bottom" bug for good. */
   position: fixed;
   top: 0; left: 0; right: 0;
   width: 100%;
   height: 100vh;
-  height: 100dvh;
+  height: 100lvh;
   background: var(--bg-gradient);
   background-color: var(--bg-bottom);
   z-index: -1;
@@ -2000,7 +1999,7 @@ main:has([data-screen="camera"]:not([hidden])) {
     top: 0; left: 0; right: 0;
     width: 100%;
     height: 100vh;
-    height: 100dvh;
+    height: 100lvh;
     background:
       radial-gradient(ellipse 320px 280px at 20% 30%, rgba(90, 158, 255, 0.10), transparent 60%),
       radial-gradient(ellipse 380px 340px at 80% 85%, rgba(231, 69, 96, 0.07), transparent 65%);
@@ -2094,17 +2093,13 @@ main:has([data-screen="camera"]:not([hidden])) {
    ═══════════════════════════════════════════════════════════════════ */
 .quick-menu {
   position: fixed;
-  /* Explicit dimensions + negative bottom to cover the safe-area-inset-
-     bottom zone. iOS PWA standalone resolves height: 100dvh as the
-     visible viewport (NOT including home indicator), so a fixed-pos
-     element with that height stops at the safe-area boundary. The
-     negative-bottom trick: position from top:0 to a bottom that's
-     PAST the visible viewport by the inset amount. */
+  /* Use lvh which always = full screen including home indicator strip.
+     This is more reliable than the negative-margin trick we used before. */
   top: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0px) * -1);
   left: 0;
-  right: 0;
   width: 100%;
+  height: 100vh;
+  height: 100lvh;
   z-index: 200;
   pointer-events: auto;
 }
@@ -2631,9 +2626,9 @@ main:has([data-screen="camera"]:not([hidden])) {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0px) * -1);
   width: 100%;
+  height: 100vh;
+  height: 100lvh;
   z-index: 300;
 }
 .dev-user-modal[hidden] { display: none; }
