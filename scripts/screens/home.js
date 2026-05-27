@@ -163,6 +163,14 @@ function paintEmpty() {
   }
   const meta = document.getElementById("timeline-meta");
   if (meta) meta.textContent = "";
+  // Also clear the spinner state on counters by setting them to 0.
+  // Important: this is the "no data after fetch" path, not the
+  // "still loading" path. paintCounters handles the success path.
+  ["stat-today-value", "pill-today-value", "pill-week-value", "pill-total-value"]
+    .forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = "0";
+    });
 }
 
 function paintTimeline(timeline) {

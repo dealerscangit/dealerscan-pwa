@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=29" />
+  <link rel="stylesheet" href="styles/main.css?v=30" />
 </head>
 <body>
   <main>
@@ -58,7 +58,7 @@
             <p class="profile-card-sub" id="profile-card-sub">Salesperson</p>
           </div>
           <div class="profile-card-stat">
-            <p class="profile-card-stat-value" id="stat-today-value">—</p>
+            <p class="profile-card-stat-value" id="stat-today-value"><span class="loading-spinner lg"></span></p>
             <p class="profile-card-stat-label">today</p>
           </div>
         </div>
@@ -66,15 +66,15 @@
         <!-- ── Tab-pill counters (today/week/total) ───────────── -->
         <div class="counter-pills" role="group" aria-label="Activity range">
           <button class="counter-pill counter-pill-active" id="pill-today" type="button" aria-pressed="true">
-            <span class="counter-pill-value" id="pill-today-value">—</span>
+            <span class="counter-pill-value" id="pill-today-value"><span class="loading-spinner"></span></span>
             <span class="counter-pill-label">today</span>
           </button>
           <button class="counter-pill" id="pill-week" type="button" aria-pressed="false">
-            <span class="counter-pill-value" id="pill-week-value">—</span>
+            <span class="counter-pill-value" id="pill-week-value"><span class="loading-spinner"></span></span>
             <span class="counter-pill-label">week</span>
           </button>
           <button class="counter-pill" id="pill-total" type="button" aria-pressed="false">
-            <span class="counter-pill-value" id="pill-total-value">—</span>
+            <span class="counter-pill-value" id="pill-total-value"><span class="loading-spinner"></span></span>
             <span class="counter-pill-label">total</span>
           </button>
         </div>
@@ -478,6 +478,6 @@
   </div>
   </main>
 
-  <script type="module" src="scripts/app.js?v=29"></script>
+  <script type="module" src="scripts/app.js?v=30"></script>
 </body>
 </html>

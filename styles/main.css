@@ -1275,28 +1275,29 @@ main:has([data-screen="camera"]:not([hidden])) {
 .profile-card {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   background: var(--surface-strong);
   border: 0.5px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: clamp(12px, 1.8vh, 16px) 14px;
+  border-radius: var(--radius-2xl);
+  padding: clamp(16px, 2.4vh, 22px) 18px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   margin-bottom: clamp(12px, 2vh, 18px);
   box-shadow: var(--shadow-md);
 }
 .profile-card-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   background: var(--accent-grad);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.45);
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(66, 133, 244, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
   flex-shrink: 0;
 }
 .profile-card-name-block {
@@ -1304,50 +1305,51 @@ main:has([data-screen="camera"]:not([hidden])) {
   min-width: 0;
 }
 .profile-card-name {
-  font-size: 16px;
+  font-size: 20px;
   color: var(--text);
   margin: 0;
-  font-weight: 600;
-  letter-spacing: -0.2px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .profile-card-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-dim);
-  margin: 1px 0 0;
+  margin: 2px 0 0;
+  font-weight: 500;
 }
 .profile-card-stat {
   text-align: right;
   flex-shrink: 0;
 }
 .profile-card-stat-value {
-  font-size: 24px;
+  font-size: 32px;
   color: var(--text);
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.8px;
   line-height: 1;
 }
 .profile-card-stat-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-dim);
-  margin: 1px 0 0;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  margin: 3px 0 0;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
 /* ── Tab-pill counters ─────────────────────────────────────────── */
 .counter-pills {
   display: flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 6px;
+  padding: 6px;
   background: var(--surface);
   border: 0.5px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   margin-bottom: clamp(14px, 2.4vh, 22px);
@@ -1356,8 +1358,8 @@ main:has([data-screen="camera"]:not([hidden])) {
   flex: 1;
   background: transparent;
   border: 0.5px solid transparent;
-  border-radius: 9px;
-  padding: 7px 4px;
+  border-radius: 12px;
+  padding: 12px 4px;
   text-align: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -1367,21 +1369,21 @@ main:has([data-screen="camera"]:not([hidden])) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 .counter-pill-value {
-  font-size: 16px;
+  font-size: 22px;
   color: rgba(255, 255, 255, 0.7);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.6px;
   line-height: 1;
 }
 .counter-pill-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-faint);
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 .counter-pill-active {
@@ -1426,17 +1428,23 @@ main:has([data-screen="camera"]:not([hidden])) {
   position: relative;
   padding-left: 18px;
   margin-bottom: clamp(14px, 2.4vh, 22px);
-  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* No flex: 1 grow here. The timeline should only be as tall as its
+     rows + a small buffer for the fading line. Empty space between the
+     timeline and the CTA is intentional and the CTA still floats to
+     the bottom via .home-cta-row margin-top: auto. */
 }
 .timeline::before {
   content: "";
   position: absolute;
   left: 5px;
   top: 12px;
-  bottom: 12px;
+  /* Stop the line ~14px below the last row's dot rather than at the
+     timeline's bottom edge. The 14px buffer gives the line a soft fade
+     into nothing right after the last entry. */
+  bottom: -4px;
   width: 1px;
   background: linear-gradient(
     180deg,
@@ -1501,12 +1509,12 @@ main:has([data-screen="camera"]:not([hidden])) {
   background: var(--surface);
   border: 0.5px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
-  padding: 11px 12px;
+  padding: 9px 14px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   width: 100%;
@@ -1521,33 +1529,36 @@ main:has([data-screen="camera"]:not([hidden])) {
   transform: scale(0.985);
 }
 .timeline-row-avatar {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 9px;
   background: var(--accent-grad);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 .timeline-row-name {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text);
   margin: 0;
   font-weight: 500;
+  letter-spacing: -0.1px;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .timeline-row-time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
+  font-weight: 500;
 }
 
 .timeline-empty {
@@ -2241,4 +2252,26 @@ main:has([data-screen="camera"]:not([hidden])) {
   font-size: 12px;
   padding: 16px 8px;
   margin: 0;
+}
+
+
+/* Loading spinner — replaces the "—" placeholder during initial data fetch.
+   Compact, centered, accent-colored. Disappears once paintCounters runs. */
+.loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--accent-soft);
+  border-radius: 50%;
+  animation: loadSpinnerRot 0.85s linear infinite;
+  vertical-align: middle;
+}
+.loading-spinner.lg {
+  width: 24px;
+  height: 24px;
+  border-width: 2.5px;
+}
+@keyframes loadSpinnerRot {
+  to { transform: rotate(360deg); }
 }
