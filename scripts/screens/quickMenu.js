@@ -37,8 +37,10 @@ export function attachQuickMenuHandlers(showScreen, session) {
 function openMenu() {
   const menu = document.getElementById("quick-menu");
   if (!menu) return;
-  // Make sure any in-flight close animation is cleared first so re-opens
-  // are crisp.
+  // Refresh role-gated items each time so a user-switch is reflected
+  // without a page reload. The announce item is shown only for users
+  // with managerActions permission.
+  updateAnnouncementMenuVisibility();
   menu.classList.remove("closing");
   menu.hidden = false;
 }
