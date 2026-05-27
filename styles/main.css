@@ -1495,7 +1495,10 @@ main:has([data-screen="camera"]:not([hidden])) {
 
 .timeline-row {
   position: relative;
-  animation: timelineFadeIn var(--dur-normal) var(--ease-out-cubic) backwards;
+  /* The card slides up from below with a subtle scale-pop; ios-spring
+     easing gives a natural rubbery settle. The dot inside has its own
+     animation that lands AFTER the card has settled. */
+  animation: timelineRowEnter 0.46s var(--ease-ios-spring) backwards;
   /* The row is now a flex container that holds the dot OUTSIDE the
      swipe-wrap (the swipe-wrap only wraps the inner .timeline-row-card).
      This keeps the dot from being clipped by the swipe-wrap's
@@ -1508,14 +1511,49 @@ main:has([data-screen="camera"]:not([hidden])) {
   flex: 1 1 auto;
   min-width: 0;
 }
-.timeline-row:nth-child(1) { animation-delay: 0.02s; }
-.timeline-row:nth-child(2) { animation-delay: 0.06s; }
-.timeline-row:nth-child(3) { animation-delay: 0.10s; }
-.timeline-row:nth-child(4) { animation-delay: 0.14s; }
-.timeline-row:nth-child(5) { animation-delay: 0.18s; }
-@keyframes timelineFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+.timeline-row:nth-child(1) { animation-delay: 0.04s; }
+.timeline-row:nth-child(2) { animation-delay: 0.11s; }
+.timeline-row:nth-child(3) { animation-delay: 0.18s; }
+.timeline-row:nth-child(4) { animation-delay: 0.25s; }
+.timeline-row:nth-child(5) { animation-delay: 0.32s; }
+
+@keyframes timelineRowEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Dot pop — fires after its row card has settled. The dot scales from
+   0 -> 1.4 (overshoot) -> 1 with a soft outer-ring shadow that grows
+   then settles. Visually: card arrives, then the dot lands a beat
+   later with a satisfying pop. */
+.timeline-row .timeline-row-dot {
+  animation: timelineDotPop 0.36s var(--ease-ios-spring) backwards;
+}
+.timeline-row:nth-child(1) .timeline-row-dot { animation-delay: 0.22s; }
+.timeline-row:nth-child(2) .timeline-row-dot { animation-delay: 0.29s; }
+.timeline-row:nth-child(3) .timeline-row-dot { animation-delay: 0.36s; }
+.timeline-row:nth-child(4) .timeline-row-dot { animation-delay: 0.43s; }
+.timeline-row:nth-child(5) .timeline-row-dot { animation-delay: 0.50s; }
+
+@keyframes timelineDotPop {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .timeline-row-dot {
