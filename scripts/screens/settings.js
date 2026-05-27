@@ -177,10 +177,13 @@ export function renderSettings() {
     pingBackendVersion().then((reported) => {
       if (reported) {
         const matches = reported === EXPECTED_BACKEND_VERSION;
-        backendV.textContent = matches
-          ? `deployed ${reported} ✓`
-          : `deployed ${reported} ≠ expected ${EXPECTED_BACKEND_VERSION}`;
-        backendV.style.color = matches ? "var(--success)" : "var(--danger)";
+        if (matches) {
+          backendV.textContent = `deployed ${reported} ✓`;
+          backendV.style.color = "var(--success)";
+        } else {
+          backendV.innerHTML = `<strong>Redeploy needed</strong> &middot; deployed ${reported}, expected ${EXPECTED_BACKEND_VERSION}`;
+          backendV.style.color = "var(--danger)";
+        }
       } else {
         backendV.textContent = "unable to check";
       }

@@ -1451,6 +1451,17 @@ main:has([data-screen="camera"]:not([hidden])) {
 .timeline-row {
   position: relative;
   animation: timelineFadeIn var(--dur-normal) var(--ease-out-cubic) backwards;
+  /* The row is now a flex container that holds the dot OUTSIDE the
+     swipe-wrap (the swipe-wrap only wraps the inner .timeline-row-card).
+     This keeps the dot from being clipped by the swipe-wrap's
+     overflow:hidden when the card is swiped. */
+}
+/* The .swipe-wrap (when the card is wrapped) becomes the child that
+   takes the remaining width after the dot's 18px gutter. */
+.timeline-row > .swipe-wrap,
+.timeline-row > .timeline-row-card {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .timeline-row:nth-child(1) { animation-delay: 0.02s; }
 .timeline-row:nth-child(2) { animation-delay: 0.06s; }
@@ -2010,6 +2021,24 @@ main:has([data-screen="camera"]:not([hidden])) {
 @keyframes qmPanelIn {
   from { opacity: 0; transform: scale(0.85) translateY(8px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Closing state: reverse animation. Triggered by .closing class
+   added by quickMenu.js closeMenu(). Element gets hidden after
+   the animation ends (animationend listener). */
+.quick-menu.closing .quick-menu-panel {
+  animation: qmPanelOut 0.18s var(--ease-in-out) forwards;
+}
+.quick-menu.closing .quick-menu-backdrop {
+  animation: qmBackdropOut 0.18s var(--ease-in-out) forwards;
+}
+@keyframes qmPanelOut {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.9) translateY(6px); }
+}
+@keyframes qmBackdropOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
 .quick-menu-item {

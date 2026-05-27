@@ -182,9 +182,11 @@ function paintTimeline(timeline) {
 
   list.innerHTML = "";
   visible.forEach((entry) => {
-    const row = buildTimelineRow(entry);
+    const { row, swipeTarget } = buildTimelineRow(entry);
     list.appendChild(row);
-    makeSwipeable(row, {
+    // Wrap only the inner card with swipe actions, leaving the dot
+    // (a sibling of the card inside the row) outside the wrap.
+    makeSwipeable(swipeTarget, {
       actions: [
         {
           label: "Remove",
@@ -200,6 +202,9 @@ function buildTimelineRow(entry) {
   const row = document.createElement("div");
   row.className = "timeline-row";
 
+  // Dot sits OUTSIDE the swipe-wrap so it stays visible when the row's
+  // card gets wrapped. Without this, .swipe-wrap's overflow:hidden
+  // clipped the dot (it lives at left: -16px outside the card).
   const dot = document.createElement("span");
   dot.className = "timeline-row-dot";
   dot.setAttribute("aria-hidden", "true");
@@ -233,7 +238,9 @@ function buildTimelineRow(entry) {
     _showScreen("camera");
   });
 
-  return row;
+  // Return BOTH the row (for DOM insertion) and the swipe target
+  // (the inner card, so the dot is preserved outside the swipe-wrap).
+  return { row, swipeTarget: card };
 }
 
 function formatTimestamp(iso) {

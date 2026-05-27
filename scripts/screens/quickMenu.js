@@ -35,12 +35,39 @@ export function attachQuickMenuHandlers(showScreen, session) {
 
 function openMenu() {
   const menu = document.getElementById("quick-menu");
-  if (menu) menu.hidden = false;
+  if (!menu) return;
+  // Make sure any in-flight close animation is cleared first so re-opens
+  // are crisp.
+  menu.classList.remove("closing");
+  menu.hidden = false;
 }
 
 function closeMenu() {
   const menu = document.getElementById("quick-menu");
-  if (menu) menu.hidden = true;
+  if (!menu || menu.hidden) return;
+
+  // Add the closing class, which triggers the reverse animation, then
+  // hide the element only after the animation finishes. This produces
+  // a smooth scale-down + fade instead of an instant pop.
+  menu.classList.add("closing");
+
+  const panel = menu.querySelector(".quick-menu-panel");
+  const onEnd = () => {
+    menu.hidden = true;
+    menu.classList.remove("closing");
+    panel && panel.removeEventListener("animationend", onEnd);
+  };
+  if (panel) {
+    panel.addEventListener("animationend", onEnd, { once: true });
+    // Safety fallback in case animationend doesn't fire (e.g., user
+    // navigates away mid-animation).
+    setTimeout(() => {
+      if (!menu.hidden) onEnd();
+    }, 300);
+  } else {
+    // No panel found (shouldn't happen), hide immediately.
+    onEnd();
+  }
 }
 
 function handleAction(action) {
