@@ -206,6 +206,7 @@ window.addEventListener("DOMContentLoaded", () => {
   attachSettingsHandlers(showScreen, session);
   attachQuickMenuHandlers(showScreen, session);
   attachDashboardHandlers(showScreen, session);
+  attachDevPanelHandlers(showScreen, session);
   attachCustomerHandlers(showScreen, session);
   attachCameraHandlers(showScreen, session);
   attachReviewHandlers(showScreen, session);
