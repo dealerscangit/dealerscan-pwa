@@ -292,11 +292,15 @@ function hidePreparing() {
 }
 
 function tryHapticBuzz() {
-  // Best-effort haptic feedback on capture. Not all browsers/devices support
-  // vibrate() — iOS Safari notably ignores it. Silent no-op when unsupported.
-  if (typeof navigator.vibrate === "function") {
-    try { navigator.vibrate(15); } catch {}
-  }
+  // Best-effort haptic feedback on capture. iOS Safari has navigator.vibrate
+  // defined as a no-op (Apple removed the Vibration API from WebKit), so
+  // detecting the function exists isn't enough. We skip iOS entirely.
+  if (typeof navigator.vibrate !== "function") return;
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) return; // Android etc. will reach here and vibrate normally
+  try { navigator.vibrate(15); } catch {}
 }
 
 function nudgeDoneButton() {

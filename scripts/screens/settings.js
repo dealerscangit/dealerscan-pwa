@@ -9,6 +9,20 @@ import { EXPECTED_BACKEND_VERSION } from "../versionCheck.js";
 
 const STORAGE_KEY = "ds.settings.v1";
 
+// Detect whether the platform supports navigator.vibrate. iOS Safari
+// (including PWA standalone mode) does NOT support it — Apple removed
+// the Vibration API from WebKit. So the toggle is hidden on iOS to
+// avoid the appearance of a broken control.
+function isHapticSupported() {
+  if (typeof navigator.vibrate !== "function") return false;
+  // iOS Safari has navigator.vibrate defined-but-no-op. The only reliable
+  // way to detect iOS is the user agent + platform combo.
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return !isIOS;
+}
+
 // Default settings shape. New keys can be added without breaking existing
 // users because readSettings() merges with these defaults on every load.
 export const DEFAULT_SETTINGS = {
@@ -128,6 +142,14 @@ export function renderSettings() {
       });
     };
   });
+
+  // Hide the haptic toggle row if the platform can't actually vibrate.
+  // iOS Safari has no vibration support, so showing the toggle there
+  // would imply functionality we can't deliver.
+  const hapticRow = document.getElementById("toggle-haptics")?.closest(".settings-row");
+  if (hapticRow && !isHapticSupported()) {
+    hapticRow.hidden = true;
+  }
 
   // Toggle wiring
   bindToggle("toggle-haptics", "hapticsEnabled");
