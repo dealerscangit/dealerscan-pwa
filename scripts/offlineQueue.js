@@ -155,7 +155,7 @@ export async function processQueue(onProgress) {
     // given their failure count. Stops the queue from hammering a broken
     // backend on every retry.
     if (item.attempts > 0 && item.lastAttemptAt) {
-      const backoffMs = Math.min(60_000 * Math.pow(2, item.attempts - 1), 60 * 60_000);
+      const backoffMs = Math.min(60000 * Math.pow(2, item.attempts - 1), 60 * 60000);
       if (Date.now() - item.lastAttemptAt < backoffMs) continue;
     }
     // Hard ceiling on attempts so we don't loop forever
