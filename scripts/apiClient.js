@@ -97,3 +97,28 @@ export async function unhideCustomer(salesName, customerName) {
   if (!txt.startsWith("OK")) throw new Error(`unhideCustomer backend: ${txt}`);
   return txt;
 }
+
+
+/**
+ * Get all data needed by the redesigned PWA home screen in a single round trip.
+ * Returns { today, week, total, timeline: [{ customer, timestamp, photoCount, folderId }, ...] }.
+ *
+ * Requires Apps Script deployment to include the `getHomeOverview` action
+ * (added 2026-05-26). If the deployment is stale, returns empty zeros so
+ * the UI degrades gracefully.
+ */
+export async function getHomeOverview(salesName) {
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set("action", "getHomeOverview");
+  url.searchParams.set("salesName", salesName);
+  const res = await fetch(url.toString(), { method: "GET" });
+  if (!res.ok) throw new Error(`getHomeOverview HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(`getHomeOverview: ${data.error}`);
+  return {
+    today: data.today || 0,
+    week: data.week || 0,
+    total: data.total || 0,
+    timeline: Array.isArray(data.timeline) ? data.timeline : [],
+  };
+}

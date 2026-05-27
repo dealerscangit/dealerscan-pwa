@@ -62,6 +62,7 @@ function doGet(e) {
   if (action === "createFolder")    return createCustomerFolder(e);
   if (action === "uploadPhoto")     return uploadPhoto(e);
   if (action === "getHistory")      return getHistory(e);
+  if (action === "getHomeOverview") return getHomeOverview(e);  // ← NEW (PWA home screen)
   if (action === "hideCustomer")    return hideCustomer(e);     // ← NEW (PWA swipe-to-remove)
   if (action === "unhideCustomer")  return unhideCustomer(e);   // ← NEW (PWA swipe undo)
   if (action === "getVersion")      return getVersion(e);
@@ -407,6 +408,85 @@ function getHistory(e) {
     }
   }
   return ContentService.createTextOutput("New Customer");
+}
+
+// ────────── PWA: home screen overview (single round-trip) ──────────
+// Returns everything the PWA's home screen needs in one call:
+//   { today, week, total, timeline: [{ customer, timestamp, photoCount }, ...] }
+// Reads ScanLog once, computes today/week/total counts and timeline entries
+// (today's scans only, newest first) in a single pass.
+//
+// Why a dedicated endpoint instead of 3 separate calls:
+//   1. One round-trip is faster on mobile (especially on weak LTE).
+//   2. ScanLog can have thousands of rows; reading it once is cheaper than 3x.
+//   3. Lets us trim the response to only what the home screen renders.
+function getHomeOverview(e) {
+  try {
+    var salesName = decodeURIComponent(e.parameter.salesName || "").trim().replace(/[^\x20-\x7E]/g, "");
+    if (!salesName) {
+      return json({ today: 0, week: 0, total: 0, timeline: [] });
+    }
+    var ss = getHistorySpreadsheet(), sheet = ss.getSheetByName("ScanLog");
+    if (!sheet) {
+      return json({ today: 0, week: 0, total: 0, timeline: [] });
+    }
+    var data = sheet.getDataRange().getValues();
+
+    // Compute day boundaries server-side in script timezone
+    var now = new Date();
+    var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    var startOfWeek = startOfDay - 6 * 86400000; // last 7 days inclusive of today
+
+    var today = 0, week = 0, total = 0;
+    var todayScans = []; // collect today's rows for timeline (deduped by customer + sorted)
+
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      var sp = (row[0] || "").toString().trim();
+      if (sp !== salesName) continue;
+      if (typeof row[3] !== "number") continue; // skip header / malformed
+
+      total++;
+      var ts = row[3];
+      if (ts >= startOfWeek) week++;
+      if (ts >= startOfDay) {
+        today++;
+        todayScans.push({
+          customer: row[1] || "",
+          timestamp: ts,
+          folderId: row[2] || "",
+          photoCount: row[7] || 0,
+        });
+      }
+    }
+
+    // Dedupe timeline by customer (keep latest entry for each), then sort
+    // newest-first, then trim to the most recent 8 (home screen shows ~3,
+    // we send a few extras for future "see more" without another call).
+    var byCustomer = {};
+    todayScans.forEach(function(s) {
+      if (!byCustomer[s.customer] || s.timestamp > byCustomer[s.customer].timestamp) {
+        byCustomer[s.customer] = s;
+      }
+    });
+    var timeline = Object.keys(byCustomer).map(function(k) { return byCustomer[k]; });
+    timeline.sort(function(a, b) { return b.timestamp - a.timestamp; });
+    timeline = timeline.slice(0, 8);
+
+    // Convert timestamps to ISO strings for predictable client parsing
+    timeline = timeline.map(function(s) {
+      return {
+        customer: s.customer,
+        timestamp: new Date(s.timestamp).toISOString(),
+        folderId: s.folderId,
+        photoCount: s.photoCount,
+      };
+    });
+
+    return json({ today: today, week: week, total: total, timeline: timeline });
+  } catch (err) {
+    return jsonError(err);
+  }
 }
 
 // ────────── NEW: hide/unhide customer from history ──────────

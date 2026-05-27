@@ -2,12 +2,15 @@
 
 The new `Code.gs` in this folder is a **full-file replacement**. It contains
 all the existing functionality (folder creation, photo upload, history, dashboard,
-archive, etc.) plus three new things:
+archive, etc.) plus these new things:
 
 1. **`hideCustomer` endpoint** — called by the PWA when a salesperson
    swipe-deletes a customer from their recent list
 2. **`unhideCustomer` endpoint** — called by the PWA's undo toast
-3. **Fix to `createCustomerFolder`** — history is now updated on EVERY
+3. **`getHomeOverview` endpoint (NEW, 2026-05-26)** — single round-trip
+   that returns `{ today, week, total, timeline }` for the PWA's redesigned
+   home screen. Reads ScanLog once and computes all four pieces in one pass.
+4. **Fix to `createCustomerFolder`** — history is now updated on EVERY
    scan, not just new-customer scans (so most-recent floats to top)
 
 ## Step-by-step deploy

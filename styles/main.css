@@ -36,10 +36,50 @@
   --success: #34d399;
   --danger:  #f87171;
 
+  /* Radii — bumped slightly to match new polish direction.
+     xl is the new "card/profile" radius, lg is most rows + buttons. */
+  --radius-2xl: 22px;
   --radius-xl: 18px;
   --radius-lg: 14px;
   --radius-md: 10px;
   --radius-sm: 8px;
+  --radius-pill: 99px;
+
+  /* Shadow scale — layered for depth.
+     Each is a stack of (close-tight) + (far-soft) for a real sense of lift.
+     Use sm for inline items, md for cards, lg for raised CTAs, glow for the
+     primary action's beacon. */
+  --shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(255, 255, 255, 0.04) inset;
+  --shadow-md:
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-lg:
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --shadow-glow-accent:
+    0 8px 24px rgba(66, 133, 244, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --shadow-glow-primary:
+    0 8px 24px rgba(231, 69, 96, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  /* Motion easing — restrained, purposeful, never bouncy.
+     out-cubic is the default; in-out for screen transitions;
+     ios-spring for taps that should feel rubbery. */
+  --ease-out-cubic: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-ios-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Durations */
+  --dur-fast:   0.14s;
+  --dur-normal: 0.22s;
+  --dur-slow:   0.38s;
 }
 
 * { box-sizing: border-box; }
@@ -1104,3 +1144,432 @@ main:has([data-screen="camera"]:not([hidden])) {
   white-space: nowrap;
 }
 .toast-action:active { opacity: 0.7; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   HOME SCREEN — V2/V3 hybrid redesign (2026-05-26)
+   Pinned status strip → profile card → tab-pill counters →
+   threaded timeline → red CTA beacon + secondary list button.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* The home section becomes a flex column with a fixed top strip and
+   scrollable body. Override the default screen padding. */
+[data-screen="home"] {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.home-body {
+  flex: 1 1 auto;
+  padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 22px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Status strip ──────────────────────────────────────────────── */
+.status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 0.5px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  flex-shrink: 0;
+}
+.status-strip-left {
+  display: flex; align-items: center; gap: 6px;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  box-shadow: 0 0 8px var(--accent-soft);
+  transition: background var(--dur-normal) var(--ease-out-cubic),
+              box-shadow var(--dur-normal) var(--ease-out-cubic);
+}
+.status-dot.syncing {
+  background: #fbbf24;
+  box-shadow: 0 0 8px #fbbf24;
+  animation: statusPulse 1.2s var(--ease-in-out) infinite;
+}
+.status-dot.offline {
+  background: var(--text-faint);
+  box-shadow: none;
+}
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+.status-label {
+  font-size: 11px;
+  color: rgba(180, 210, 255, 0.95);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.status-strip-right {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color var(--dur-fast) var(--ease-out-cubic),
+              background var(--dur-fast) var(--ease-out-cubic);
+}
+.status-strip-right:active {
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* ── Profile card ──────────────────────────────────────────────── */
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface-strong);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-md);
+}
+.profile-card-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent-grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.45);
+  flex-shrink: 0;
+}
+.profile-card-name-block {
+  flex: 1;
+  min-width: 0;
+}
+.profile-card-name {
+  font-size: 16px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-card-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 1px 0 0;
+}
+.profile-card-stat {
+  text-align: right;
+  flex-shrink: 0;
+}
+.profile-card-stat-value {
+  font-size: 24px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.profile-card-stat-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin: 1px 0 0;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* ── Tab-pill counters ─────────────────────────────────────────── */
+.counter-pills {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  margin-bottom: 22px;
+}
+.counter-pill {
+  flex: 1;
+  background: transparent;
+  border: 0.5px solid transparent;
+  border-radius: 9px;
+  padding: 7px 4px;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              border-color var(--dur-fast) var(--ease-out-cubic),
+              box-shadow var(--dur-fast) var(--ease-out-cubic);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.counter-pill-value {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+  line-height: 1;
+}
+.counter-pill-label {
+  font-size: 9px;
+  color: var(--text-faint);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.counter-pill-active {
+  background: rgba(90, 158, 255, 0.2);
+  border-color: rgba(90, 158, 255, 0.32);
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.22);
+}
+.counter-pill-active .counter-pill-value {
+  color: var(--text);
+}
+.counter-pill-active .counter-pill-label {
+  color: rgba(180, 210, 255, 0.95);
+}
+.counter-pill:active {
+  transform: scale(0.97);
+}
+
+/* ── Timeline header ───────────────────────────────────────────── */
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.timeline-header-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.timeline-header-meta {
+  font-size: 11px;
+  color: rgba(180, 210, 255, 0.85);
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ── Threaded timeline ─────────────────────────────────────────── */
+.timeline {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: 22px;
+  flex: 1 1 auto;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(90, 158, 255, 0.45),
+    rgba(90, 158, 255, 0.2),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.timeline-row {
+  position: relative;
+  margin-bottom: 10px;
+  animation: timelineFadeIn var(--dur-normal) var(--ease-out-cubic) backwards;
+}
+.timeline-row:nth-child(1) { animation-delay: 0.02s; }
+.timeline-row:nth-child(2) { animation-delay: 0.06s; }
+.timeline-row:nth-child(3) { animation-delay: 0.10s; }
+.timeline-row:nth-child(4) { animation-delay: 0.14s; }
+.timeline-row:nth-child(5) { animation-delay: 0.18s; }
+@keyframes timelineFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.timeline-row-dot {
+  position: absolute;
+  left: -16px;
+  top: 14px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(90, 158, 255, 0.2);
+}
+/* Older entries get progressively dimmer dots */
+.timeline-row:nth-child(2) .timeline-row-dot {
+  background: rgba(90, 158, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(90, 158, 255, 0.13);
+}
+.timeline-row:nth-child(3) .timeline-row-dot {
+  background: rgba(90, 158, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(90, 158, 255, 0.08);
+}
+.timeline-row:nth-child(n+4) .timeline-row-dot {
+  background: rgba(90, 158, 255, 0.3);
+  box-shadow: 0 0 0 3px rgba(90, 158, 255, 0.05);
+}
+
+.timeline-row-card {
+  background: var(--surface);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 11px 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              transform var(--dur-fast) var(--ease-out-cubic);
+}
+.timeline-row-card:active {
+  background: var(--surface-hover);
+  transform: scale(0.985);
+}
+.timeline-row-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--accent-grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.timeline-row-name {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timeline-row-time {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.timeline-empty {
+  background: var(--surface);
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  padding: 18px 16px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Skeleton row for timeline loading state */
+.skeleton-timeline-row {
+  height: 50px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-lg);
+}
+
+/* ── Split CTA row ─────────────────────────────────────────────── */
+.home-cta-row {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.cta-beacon {
+  flex: 1;
+  background: var(--primary-grad);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-pill);
+  padding: 14px 20px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--shadow-glow-primary);
+  transition: transform var(--dur-fast) var(--ease-out-cubic),
+              box-shadow var(--dur-normal) var(--ease-out-cubic);
+}
+.cta-beacon:active {
+  transform: scale(0.97);
+  box-shadow:
+    0 4px 14px rgba(231, 69, 96, 0.42),
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.cta-secondary {
+  width: 48px;
+  height: 48px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  flex-shrink: 0;
+  transition: transform var(--dur-fast) var(--ease-out-cubic),
+              background var(--dur-fast) var(--ease-out-cubic);
+}
+.cta-secondary:active {
+  transform: scale(0.94);
+  background: var(--surface-hover);
+}

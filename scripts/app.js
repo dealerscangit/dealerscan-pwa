@@ -72,6 +72,7 @@ const SCREEN_RENDERERS = {
   review:   renderReview,
   upload:   renderUpload,
   done:     renderDone,
+  settings: () => {},  // stub — full settings screen builds in step 5
 };
 
 export function showScreen(id) {

@@ -1,14 +1,29 @@
 // scripts/screens/home.js
-// Screen 2: home — greeting + primary "New Scan" card + recent customers.
+// Redesigned home screen (2026-05-26): status strip + profile card +
+// tab-pill counters + threaded vertical timeline + red CTA beacon +
+// secondary list button.
+//
+// Talks to the backend via a single getHomeOverview round trip that
+// returns { today, week, total, timeline }.
 
 import { getCurrentSalesperson } from "../currentUser.js";
-import { getCustomerHistory, hideCustomer, unhideCustomer } from "../apiClient.js";
+import {
+  getHomeOverview,
+  hideCustomer,
+  unhideCustomer,
+} from "../apiClient.js";
 import { makeSwipeable, showToast } from "../swipeActions.js";
 import { reportError } from "../errorReporter.js";
 
 let _showScreen = null;
 let _session = null;
-let _historyCache = null; // cache for the session so we don't re-fetch every screen change
+
+// Cached overview from the last successful fetch, so screen re-entry is instant
+// while we refresh in the background.
+let _overviewCache = null;
+
+// Network/sync UI state — drives the status dot pulse + label
+let _isSyncing = false;
 
 export function attachHomeHandlers(showScreen, session) {
   _showScreen = showScreen;
@@ -21,103 +36,205 @@ export function attachHomeHandlers(showScreen, session) {
       _showScreen("customer");
     });
   }
+
+  const btnAllCustomers = document.getElementById("btn-all-customers");
+  if (btnAllCustomers) {
+    btnAllCustomers.addEventListener("click", () => {
+      // Secondary CTA = browse the full recent list. Reuses the customer
+      // picker screen but starts blank (no auto-create new).
+      _session.reset();
+      _showScreen("customer");
+    });
+  }
+
+  const btnSettings = document.getElementById("btn-settings");
+  if (btnSettings) {
+    btnSettings.addEventListener("click", () => {
+      _showScreen("settings");
+    });
+  }
+
+  // Track connection state so the status dot reflects reality
+  window.addEventListener("online", () => updateStatusDot());
+  window.addEventListener("offline", () => updateStatusDot());
 }
 
 export function renderHome() {
-  renderGreeting();
-  renderRecentList();
+  paintIdentity();
+  updateStatusDot();
+  renderOverview();
 }
 
-function renderGreeting() {
-  const el = document.getElementById("home-greeting");
-  if (!el) return;
-  const sp = getCurrentSalesperson();
-  el.textContent = sp ? `Hi, ${sp} 👋` : "Hi 👋";
+// ──────────────────────────────────────────────────────────────────
+// Identity (top profile card)
+// ──────────────────────────────────────────────────────────────────
+function paintIdentity() {
+  const sp = getCurrentSalesperson() || "Salesperson";
+  const avatar = document.getElementById("profile-card-avatar");
+  const name = document.getElementById("profile-card-name");
+  if (avatar) avatar.textContent = sp.charAt(0).toUpperCase();
+  if (name) name.textContent = sp;
 }
 
-async function renderRecentList() {
-  const list = document.getElementById("recent-list");
-  const count = document.getElementById("recent-count");
-  if (!list) return;
+// ──────────────────────────────────────────────────────────────────
+// Status dot (pinned strip, top-left)
+// ──────────────────────────────────────────────────────────────────
+function updateStatusDot() {
+  const dot = document.getElementById("status-dot");
+  const label = document.getElementById("status-label");
+  if (!dot || !label) return;
 
-  if (_historyCache) {
-    paintRecentList(list, count, _historyCache);
-  } else {
-    // First load: skeleton placeholders
-    list.innerHTML = `
-      <div class="skeleton skeleton-row"></div>
-      <div class="skeleton skeleton-row"></div>
-      <div class="skeleton skeleton-row"></div>`;
-    if (count) count.textContent = "";
-  }
+  dot.classList.remove("syncing", "offline");
 
-  // Always re-fetch in background to stay fresh
-  try {
-    const sp = getCurrentSalesperson();
-    if (!sp) return;
-    const all = await getCustomerHistory(sp);
-    const real = all.filter((n) => n && n !== "New Customer");
-    _historyCache = real;
-    paintRecentList(list, count, real);
-  } catch (err) {
-    console.error("[home] getCustomerHistory failed:", err);
-    reportError("getHistoryFailed", { error: err });
-    if (!_historyCache) {
-      list.innerHTML = '<div class="recent-empty muted small">Couldn\'t load recent customers.</div>';
-    }
-  }
-}
-
-function paintRecentList(list, count, customers) {
-  list.innerHTML = "";
-  if (customers.length === 0) {
-    list.innerHTML = '<div class="recent-empty muted small">No recent customers yet. Tap New Scan to start.</div>';
-    if (count) count.textContent = "";
+  if (!navigator.onLine) {
+    dot.classList.add("offline");
+    label.textContent = "Offline";
     return;
   }
-  if (count) count.textContent = `${customers.length} total`;
+  if (_isSyncing) {
+    dot.classList.add("syncing");
+    label.textContent = "Syncing";
+    return;
+  }
+  label.textContent = "Synced";
+}
 
-  const top = customers.slice(0, 5);
-  top.forEach((name) => {
-    const row = buildRecentRow(name);
+function setSyncing(isSyncing) {
+  _isSyncing = isSyncing;
+  updateStatusDot();
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Overview (counters + timeline) — single fetch, single paint
+// ──────────────────────────────────────────────────────────────────
+async function renderOverview() {
+  // Paint from cache immediately if we have it; this is what makes
+  // re-entering the screen feel instant.
+  if (_overviewCache) {
+    paintCounters(_overviewCache);
+    paintTimeline(_overviewCache.timeline);
+  } else {
+    paintSkeleton();
+  }
+
+  const sp = getCurrentSalesperson();
+  if (!sp) {
+    paintEmpty();
+    return;
+  }
+
+  setSyncing(true);
+  try {
+    const data = await getHomeOverview(sp);
+    _overviewCache = data;
+    paintCounters(data);
+    paintTimeline(data.timeline);
+  } catch (err) {
+    console.error("[home] getHomeOverview failed:", err);
+    reportError("getHomeOverviewFailed", { error: err });
+    // If we have no cache to fall back on, show empty rather than skeleton
+    if (!_overviewCache) paintEmpty();
+  } finally {
+    setSyncing(false);
+  }
+}
+
+function paintCounters({ today, week, total }) {
+  const fields = [
+    ["stat-today-value", today],
+    ["pill-today-value", today],
+    ["pill-week-value", week],
+    ["pill-total-value", total],
+  ];
+  fields.forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
+}
+
+function paintSkeleton() {
+  const list = document.getElementById("timeline-list");
+  if (!list) return;
+  list.innerHTML = `
+    <div class="skeleton skeleton-timeline-row"></div>
+    <div class="skeleton skeleton-timeline-row"></div>
+    <div class="skeleton skeleton-timeline-row"></div>`;
+}
+
+function paintEmpty() {
+  const list = document.getElementById("timeline-list");
+  if (list) {
+    list.innerHTML =
+      '<div class="timeline-empty">No scans yet today. Tap New scan to start.</div>';
+  }
+  const meta = document.getElementById("timeline-meta");
+  if (meta) meta.textContent = "";
+}
+
+function paintTimeline(timeline) {
+  const list = document.getElementById("timeline-list");
+  const meta = document.getElementById("timeline-meta");
+  if (!list) return;
+
+  if (!timeline || timeline.length === 0) {
+    paintEmpty();
+    return;
+  }
+
+  if (meta) meta.textContent = `${timeline.length} today`;
+
+  // Show up to 5 in the home view; the rest live on the customer screen.
+  const visible = timeline.slice(0, 5);
+
+  list.innerHTML = "";
+  visible.forEach((entry) => {
+    const row = buildTimelineRow(entry);
     list.appendChild(row);
-    // Wrap it in swipe-to-remove after it's in the DOM
     makeSwipeable(row, {
       actions: [
         {
           label: "Remove",
           style: "destructive",
-          onTap: () => handleRemove(name),
+          onTap: () => handleRemove(entry.customer),
         },
       ],
     });
   });
 }
 
-function buildRecentRow(name) {
-  const row = document.createElement("button");
-  row.className = "recent-item";
-  row.type = "button";
+function buildTimelineRow(entry) {
+  const row = document.createElement("div");
+  row.className = "timeline-row";
 
-  const icon = document.createElement("span");
-  icon.className = "recent-item-icon";
-  icon.textContent = name.charAt(0).toUpperCase();
+  const dot = document.createElement("span");
+  dot.className = "timeline-row-dot";
+  dot.setAttribute("aria-hidden", "true");
+  row.appendChild(dot);
 
-  const label = document.createElement("span");
-  label.className = "recent-item-name";
-  label.textContent = name;
+  const card = document.createElement("button");
+  card.className = "timeline-row-card";
+  card.type = "button";
 
-  const chev = document.createElement("span");
-  chev.className = "recent-item-chev";
-  chev.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  const avatar = document.createElement("span");
+  avatar.className = "timeline-row-avatar";
+  avatar.textContent = (entry.customer || "?").charAt(0).toUpperCase();
 
-  row.appendChild(icon);
-  row.appendChild(label);
-  row.appendChild(chev);
+  const name = document.createElement("span");
+  name.className = "timeline-row-name";
+  name.textContent = entry.customer || "(unknown)";
 
-  row.addEventListener("click", () => {
+  const time = document.createElement("span");
+  time.className = "timeline-row-time";
+  time.textContent = formatTimestamp(entry.timestamp);
+
+  card.appendChild(avatar);
+  card.appendChild(name);
+  card.appendChild(time);
+  row.appendChild(card);
+
+  card.addEventListener("click", () => {
     _session.reset();
-    _session.customerName = name;
+    _session.customerName = entry.customer;
     _session.isNewCustomer = false;
     _showScreen("camera");
   });
@@ -125,44 +242,56 @@ function buildRecentRow(name) {
   return row;
 }
 
-// ────────────────────────────────────────────────
-// Remove customer (swipe action)
-// ────────────────────────────────────────────────
-// Optimistic: remove from cache + UI immediately so the user sees instant
-// feedback, then fire the backend call. If the call fails, restore.
-// Show an undo toast that calls unhideCustomer.
+function formatTimestamp(iso) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const am = h < 12;
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${m.toString().padStart(2, "0")}${am ? "a" : "p"}`;
+  } catch {
+    return "";
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Remove customer (swipe action on timeline row)
+// ──────────────────────────────────────────────────────────────────
 async function handleRemove(name) {
   const sp = getCurrentSalesperson();
   if (!sp) return;
 
-  // Optimistic cache update
-  const before = _historyCache ? [..._historyCache] : null;
-  if (_historyCache) {
-    _historyCache = _historyCache.filter((n) => n !== name);
+  // Optimistic local update
+  const before = _overviewCache;
+  if (_overviewCache) {
+    _overviewCache = {
+      ..._overviewCache,
+      timeline: _overviewCache.timeline.filter((e) => e.customer !== name),
+    };
+    paintTimeline(_overviewCache.timeline);
   }
-  renderRecentList();
 
-  // Fire backend hide
   try {
     await hideCustomer(sp, name);
   } catch (err) {
     console.error("[home] hideCustomer failed, restoring:", err);
     reportError("hideCustomerFailed", { customer: name, error: err });
-    _historyCache = before;
-    renderRecentList();
+    _overviewCache = before;
+    if (_overviewCache) paintTimeline(_overviewCache.timeline);
     showToast(`Couldn't remove ${name} — try again`);
     return;
   }
 
-  // Undo toast
   showToast(`Removed ${name}`, {
     actionLabel: "Undo",
     onAction: async () => {
       try {
         await unhideCustomer(sp, name);
-        // Re-fetch to pick up server-side ordering
-        _historyCache = null;
-        renderRecentList();
+        // Re-fetch so server is the source of truth for ordering
+        _overviewCache = null;
+        renderOverview();
       } catch (err) {
         console.error("[home] unhideCustomer failed:", err);
         showToast(`Couldn't restore ${name}`);
@@ -171,12 +300,15 @@ async function handleRemove(name) {
   });
 }
 
-// Export so customer screen can share the cache without re-fetching.
+// ──────────────────────────────────────────────────────────────────
+// Cache management — exported so customer.js can invalidate after
+// its own swipe-remove (kept for backward compatibility).
+// ──────────────────────────────────────────────────────────────────
 export function getCachedHistory() {
-  return _historyCache;
+  if (!_overviewCache) return null;
+  return _overviewCache.timeline.map((e) => e.customer);
 }
 
-// Allow customer screen to invalidate the cache after its own swipe-remove
 export function invalidateHistoryCache() {
-  _historyCache = null;
+  _overviewCache = null;
 }

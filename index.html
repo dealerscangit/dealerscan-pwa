@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=22" />
+  <link rel="stylesheet" href="styles/main.css?v=23" />
 </head>
 <body>
   <main>
@@ -33,36 +33,78 @@
          SCREEN 2: home (signed in)
          ───────────────────────────────────────────── -->
     <section data-screen="home" hidden>
-      <header class="home-header">
-        <h1 class="home-greeting" id="home-greeting">Hi 👋</h1>
-        <p class="muted">Ready to scan some docs?</p>
-      </header>
-
-      <button class="primary-card" id="btn-new-scan" type="button">
-        <span class="primary-card-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
-        </span>
-        <span class="primary-card-label">New Scan</span>
-        <span class="primary-card-sub">Start a scan for a customer</span>
-      </button>
-
-      <section class="recent-section">
-        <div class="section-header">
-          <h2>Recent customers</h2>
-          <span class="dim small" id="recent-count"></span>
+      <!-- ── Pinned status strip (system-bar style) ────────────── -->
+      <div class="status-strip">
+        <div class="status-strip-left">
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <span class="status-label" id="status-label">Synced</span>
         </div>
-        <div class="recent-list" id="recent-list">
-          <div class="skeleton skeleton-row"></div>
-          <div class="skeleton skeleton-row"></div>
-          <div class="skeleton skeleton-row"></div>
+        <button class="status-strip-right" id="btn-settings" type="button" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+
+      <div class="home-body">
+        <!-- ── Profile card: name + identity + today's count ──── -->
+        <div class="profile-card">
+          <div class="profile-card-avatar" id="profile-card-avatar">B</div>
+          <div class="profile-card-name-block">
+            <p class="profile-card-name" id="profile-card-name">Brandon</p>
+            <p class="profile-card-sub" id="profile-card-sub">Salesperson</p>
+          </div>
+          <div class="profile-card-stat">
+            <p class="profile-card-stat-value" id="stat-today-value">—</p>
+            <p class="profile-card-stat-label">today</p>
+          </div>
         </div>
-      </section>
 
-      <footer class="home-meta-footer">
-        <button id="signout-btn" class="meta-action" type="button">Switch user</button>
-      </footer>
+        <!-- ── Tab-pill counters (today/week/total) ───────────── -->
+        <div class="counter-pills" role="group" aria-label="Activity range">
+          <button class="counter-pill counter-pill-active" id="pill-today" type="button" aria-pressed="true">
+            <span class="counter-pill-value" id="pill-today-value">—</span>
+            <span class="counter-pill-label">today</span>
+          </button>
+          <button class="counter-pill" id="pill-week" type="button" aria-pressed="false">
+            <span class="counter-pill-value" id="pill-week-value">—</span>
+            <span class="counter-pill-label">week</span>
+          </button>
+          <button class="counter-pill" id="pill-total" type="button" aria-pressed="false">
+            <span class="counter-pill-value" id="pill-total-value">—</span>
+            <span class="counter-pill-label">total</span>
+          </button>
+        </div>
 
-      <div class="version-footer" id="version-footer">DealerScan PWA · 1.0</div>
+        <!-- ── Threaded timeline ──────────────────────────────── -->
+        <div class="timeline-header">
+          <p class="timeline-header-label">Timeline</p>
+          <p class="timeline-header-meta" id="timeline-meta"></p>
+        </div>
+        <div class="timeline" id="timeline-list">
+          <div class="skeleton skeleton-timeline-row"></div>
+          <div class="skeleton skeleton-timeline-row"></div>
+          <div class="skeleton skeleton-timeline-row"></div>
+        </div>
+
+        <!-- ── Split CTA: red beacon + secondary list icon ────── -->
+        <div class="home-cta-row">
+          <button class="cta-beacon" id="btn-new-scan" type="button">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
+          <span>New scan</span>
+          </button>
+          <button class="cta-secondary" id="btn-all-customers" type="button" aria-label="All customers">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- The dev "switch user" affordance gets moved to the settings screen.
+           Hidden recent-list element kept for now to avoid breaking the
+           lingering reference in swipe-action wiring code until that's refactored. -->
+      <div id="recent-list" hidden></div>
+      <div id="recent-count" hidden></div>
+      <h1 class="home-greeting" id="home-greeting" hidden></h1>
+      <button id="signout-btn" type="button" hidden></button>
+      <div class="version-footer" id="version-footer" hidden>DealerScan PWA · 1.0</div>
     </section>
 
     <!-- ─────────────────────────────────────────────
@@ -204,6 +246,21 @@
     <!-- ─────────────────────────────────────────────
          SCREEN 7: done
          ───────────────────────────────────────────── -->
+    <!-- ─────────────────────────────────────────────
+         SCREEN: settings (minimal scaffold; filled in step 5)
+         ───────────────────────────────────────────── -->
+    <section data-screen="settings" hidden>
+      <header class="screen-header">
+        <button class="icon-button" data-back="home" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h1>Settings</h1>
+      </header>
+      <div class="settings-body">
+        <p class="muted" style="text-align: center; padding: 40px 16px;">Settings coming soon.</p>
+      </div>
+    </section>
+
     <section data-screen="done" hidden>
       <div class="done-wrap">
         <div class="done-check" aria-hidden="true">
@@ -221,6 +278,6 @@
 
   </main>
 
-  <script type="module" src="scripts/app.js?v=22"></script>
+  <script type="module" src="scripts/app.js?v=23"></script>
 </body>
 </html>
