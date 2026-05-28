@@ -170,10 +170,21 @@ export function renderSettings() {
   // a separate "View as" affordance to inspect other users dashboards.
   const switchBtn = document.getElementById("settings-switch-user");
   if (switchBtn) {
-    // Dev can still switch even after impersonating a non-dev user.
-    // The flag is set in signin.js on dev sign-in and persists across
-    // switches until tab close.
-    const isDevSession = sessionStorage.getItem("ds.dev_session") === "1";
+    // Switch User visibility for dev users:
+    //   - hasPermissionSync("manageUsers") returns true if the CURRENT
+    //     impersonated user is dev (so always shown for original-dev
+    //     viewing their own data)
+    //   - ds.dev_session sessionStorage flag is set when the ORIGINAL
+    //     sign-in was dev, so the dev keeps the affordance even when
+    //     impersonating a non-dev user (View-as scenario)
+    //   - Self-heal: if current user IS dev but flag is missing (loaded
+    //     before v=66 shipped), set the flag now so subsequent renders
+    //     work correctly without a re-sign-in
+    let isDevSession = sessionStorage.getItem("ds.dev_session") === "1";
+    if (!isDevSession && hasPermissionSync("manageUsers")) {
+      sessionStorage.setItem("ds.dev_session", "1");
+      isDevSession = true;
+    }
     switchBtn.hidden = !hasPermissionSync("manageUsers") && !isDevSession;
     switchBtn.onclick = () => {
       clearCurrentSalesperson();

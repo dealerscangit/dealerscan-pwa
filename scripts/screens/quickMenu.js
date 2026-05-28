@@ -48,8 +48,13 @@ function openMenu() {
   // dev access. Post-Sign-In: becomes Sign out for everyone.
   const switchItem = menu.querySelector('[data-menu-action="switch-user"]');
   if (switchItem) {
-    // Dev impersonating a non-dev still keeps switch via the session flag
-    const isDevSession = sessionStorage.getItem("ds.dev_session") === "1";
+    // Dev impersonating a non-dev keeps switch via the session flag.
+    // Self-heal: if current user IS dev but flag was never set, set it now.
+    let isDevSession = sessionStorage.getItem("ds.dev_session") === "1";
+    if (!isDevSession && hasPermissionSync("manageUsers")) {
+      sessionStorage.setItem("ds.dev_session", "1");
+      isDevSession = true;
+    }
     switchItem.hidden = !hasPermissionSync("manageUsers") && !isDevSession;
   }
 

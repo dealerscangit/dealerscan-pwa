@@ -41,18 +41,36 @@ export function renderSigninPicker() {
       // (sessionStorage scope). When real Sign-In ships, the proper
       // View-as design replaces this hack.
       try {
-        // Only SET the flag — never clear it during subsequent switches.
-        // If its already true from an earlier sign-in this session, leave it.
-        if (sessionStorage.getItem("ds.dev_session") !== "1") {
-          invalidateRegistry();  // ensure fresh role lookup
+        // Persist the ORIGINAL signed-in user separately from the current
+        // view. This way, when dev (Brandon) switches to view another user
+        // (Cheyne), we can still tell that the underlying identity is dev
+        // and keep Switch User affordance visible.
+        //
+        // sessionStorage:
+        //   ds.original_sp    = who they ACTUALLY signed in as (sticky)
+        //   ds.dev_session    = "1" if original is dev (cached for speed)
+        //
+        // Only write original_sp if it's not already set OR the current
+        // sign-in matches the existing original (re-login as self after
+        // closing tab). Subsequent picker uses (switch-user) leave both
+        // values intact.
+        const existing = sessionStorage.getItem("ds.original_sp");
+        if (!existing) {
+          sessionStorage.setItem("ds.original_sp", name);
+          // Look up the role and cache the dev_session flag
+          invalidateRegistry();
           const reg = await loadRegistry();
           const record = (reg.users || []).find(
             (u) => (u.name || "").trim().toLowerCase() === name.toLowerCase()
           );
           if (record && record.role === "dev") {
             sessionStorage.setItem("ds.dev_session", "1");
+          } else {
+            sessionStorage.removeItem("ds.dev_session");
           }
         }
+        // If existing is set, this is a switch — DO NOT update original_sp
+        // or dev_session. The original identity stays whatever it was.
       } catch {}
       _showScreen("home");
     });
