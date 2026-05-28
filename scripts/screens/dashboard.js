@@ -9,7 +9,7 @@
 import { getCurrentSalesperson } from "../currentUser.js";
 import { getHomeOverview, getTeamOverview } from "../apiClient.js";
 import { getOrFetch } from "../dataCache.js";
-import { hasPermissionSync } from "../roles.js";
+import { hasPermissionSync, loadRegistry } from "../roles.js";
 
 let _showScreen = null;
 let _session = null;
@@ -78,6 +78,13 @@ export async function renderDashboard() {
 async function renderTeamSection() {
   const teamSection = document.getElementById("dashboard-team-section");
   if (!teamSection) return;
+
+  // CRITICAL: wait for the registry to load before checking permissions.
+  // hasPermissionSync reads from a cached registry; on first dashboard
+  // visit after sign-in the cache may be empty → returns false → team
+  // section stays hidden for managers who SHOULD see it. Same race
+  // condition we fixed in home.js renderOverview.
+  await loadRegistry().catch(() => {});
 
   // Permission gate. If user lacks viewAllData, keep section hidden.
   if (!hasPermissionSync("viewAllData")) {
