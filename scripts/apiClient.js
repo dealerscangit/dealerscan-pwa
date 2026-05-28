@@ -4,6 +4,28 @@
 
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzF13p-WRJloMRBoWiQ4h6EmR7iylkVoGxX0Y9PBpEN0RacIvfxoN_Hd15NJUSYpsQJug/exec";
+import {
+  getToken, getViewAsEmail,
+} from "./auth/session.js";
+
+// Internal helper: attach auth token + view-as email to a URL.
+// Every endpoint calls this so all requests are consistently authenticated.
+//
+// What gets attached:
+//   - token: the Google ID JWT from sessionStorage. Backend's verifyToken
+//     gate validates it. If missing, backend returns 401 / auth error.
+//   - viewAsEmail: only set when dev is impersonating another user via the
+//     "View as" picker. Backend honors this only if the verified token's
+//     user is dev; ignored otherwise (security: non-dev can't spoof).
+function _attachAuth(url) {
+  const token = getToken();
+  if (token) url.searchParams.set("token", token);
+  const viewAs = getViewAsEmail();
+  if (viewAs) url.searchParams.set("viewAsEmail", viewAs);
+  return url;
+}
+
+
 
 /**
  * Create (or get existing) customer folder for today.
@@ -12,6 +34,7 @@ const APPS_SCRIPT_URL =
 export async function createCustomerFolder(customerName, salesName, isNew) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "createFolder");
+  _attachAuth(url);
   url.searchParams.set("customerName", customerName);
   url.searchParams.set("salesName", salesName);
   url.searchParams.set("isNew", isNew ? "true" : "false");
@@ -33,6 +56,7 @@ export async function createCustomerFolder(customerName, salesName, isNew) {
 export async function uploadPhoto(folderId, photoBase64, filename = "scan.jpg") {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "uploadPhoto");
+  _attachAuth(url);
   const res = await fetch(url.toString(), {
     method: "POST",
     // Apps Script doPost is finicky with Content-Type; text/plain avoids CORS preflight
@@ -52,6 +76,7 @@ export async function uploadPhoto(folderId, photoBase64, filename = "scan.jpg") 
 export async function getCustomerHistory(salesName) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "getHistory");
+  _attachAuth(url);
   url.searchParams.set("salesName", salesName);
   const res = await fetch(url.toString(), { method: "GET" });
   if (!res.ok) throw new Error(`getHistory HTTP ${res.status}`);
@@ -72,6 +97,7 @@ export async function getCustomerHistory(salesName) {
 export async function hideCustomer(salesName, customerName) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "hideCustomer");
+  _attachAuth(url);
   url.searchParams.set("salesName", salesName);
   url.searchParams.set("customerName", customerName);
   const res = await fetch(url.toString(), { method: "GET" });
@@ -89,6 +115,7 @@ export async function hideCustomer(salesName, customerName) {
 export async function unhideCustomer(salesName, customerName) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "unhideCustomer");
+  _attachAuth(url);
   url.searchParams.set("salesName", salesName);
   url.searchParams.set("customerName", customerName);
   const res = await fetch(url.toString(), { method: "GET" });
@@ -112,6 +139,7 @@ export async function unhideCustomer(salesName, customerName) {
 export async function getHomeOverview(salesName) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "getHomeOverview");
+  _attachAuth(url);
   url.searchParams.set("salesName", salesName);
   try {
     const res = await fetch(url.toString(), { method: "GET" });
@@ -192,6 +220,7 @@ async function fallbackHomeOverview(salesName) {
 export async function getRegistry() {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "getRegistry");
+  _attachAuth(url);
   const res = await fetch(url.toString(), { method: "GET" });
   if (!res.ok) throw new Error(`getRegistry HTTP ${res.status}`);
   return await res.json();
@@ -201,6 +230,7 @@ export async function updateUser(user) {
   // user shape: { email, name, role, active? }
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "updateUser");
+  _attachAuth(url);
   const formData = new FormData();
   formData.set("payload", JSON.stringify(user));
   const res = await fetch(url.toString(), { method: "POST", body: formData });
@@ -211,6 +241,7 @@ export async function updateUser(user) {
 export async function deleteUser(email, hard = false) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "deleteUser");
+  _attachAuth(url);
   const formData = new FormData();
   formData.set("payload", JSON.stringify({ email, hard }));
   const res = await fetch(url.toString(), { method: "POST", body: formData });
@@ -226,6 +257,7 @@ export async function deleteUser(email, hard = false) {
 export async function getTeamOverview() {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "getTeamOverview");
+  _attachAuth(url);
   const res = await fetch(url.toString(), { method: "GET" });
   if (!res.ok) throw new Error(`getTeamOverview HTTP ${res.status}`);
   return await res.json();
@@ -237,6 +269,7 @@ export async function getTeamOverview() {
 export async function listAnnouncements(salesName, email = "") {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "listAnnouncements");
+  _attachAuth(url);
   if (salesName) url.searchParams.set("salesName", salesName);
   if (email) url.searchParams.set("email", email);
   const res = await fetch(url.toString(), { method: "GET" });
@@ -248,6 +281,7 @@ export async function createAnnouncement(payload) {
   // payload: { body, audience: { type, emails?, names? }, ttlHours?, createdBy, createdByName }
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "createAnnouncement");
+  _attachAuth(url);
   const formData = new FormData();
   formData.set("payload", JSON.stringify(payload));
   const res = await fetch(url.toString(), { method: "POST", body: formData });
@@ -258,6 +292,7 @@ export async function createAnnouncement(payload) {
 export async function deleteAnnouncement(id) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "deleteAnnouncement");
+  _attachAuth(url);
   const formData = new FormData();
   formData.set("payload", JSON.stringify({ id }));
   const res = await fetch(url.toString(), { method: "POST", body: formData });

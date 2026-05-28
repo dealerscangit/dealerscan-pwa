@@ -9,6 +9,9 @@ import { EXPECTED_BACKEND_VERSION } from "../versionCheck.js";
 import { count as queueCount, processQueue, getAll as getQueueAll } from "../offlineQueue.js";
 import { shouldShowDevEntry } from "./devPanel.js";
 import { hasPermissionSync } from "../roles.js";
+import { clearSession } from "../auth/session.js";
+import { gisSignOut } from "../auth/google.js";
+import { getEmail } from "../auth/session.js";
 
 const STORAGE_KEY = "ds.settings.v1";
 
@@ -168,6 +171,18 @@ export function renderSettings() {
   // managers dont need this since theyll have one identity.
   // Post-Sign-In: this becomes "Sign out" for everyone, but dev gets
   // a separate "View as" affordance to inspect other users dashboards.
+  // Sign out — clear auth session + revoke Google auto-select, route to signin.
+  const signOutBtn = document.getElementById("settings-sign-out");
+  if (signOutBtn) {
+    signOutBtn.onclick = async () => {
+      const email = getEmail();
+      clearSession();
+      clearCurrentSalesperson();
+      await gisSignOut(email);  // best-effort; non-fatal
+      _showScreen("signin");
+    };
+  }
+
   const switchBtn = document.getElementById("settings-switch-user");
   if (switchBtn) {
     // Switch User visibility for dev users:

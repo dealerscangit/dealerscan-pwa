@@ -3341,3 +3341,41 @@ main:has([data-screen="camera"]:not([hidden])) {
   font-size: 12px;
   opacity: 0.5;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SIGN-IN with Google (GIS) — added with Sign-In rollout
+   ═══════════════════════════════════════════════════════════════════ */
+
+.gis-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 40px;
+  padding: 0 24px;
+}
+
+/* GIS renders an iframe inside this — we just make sure the wrapper
+   is the right width so it doesn't get squished on small screens. */
+.gis-button-container {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
+.signin-error {
+  color: #fda4af;
+  font-size: 13px;
+  text-align: center;
+  background: rgba(231, 69, 96, 0.1);
+  border: 0.5px solid rgba(231, 69, 96, 0.3);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin: 0;
+  max-width: 320px;
+}
+
+#signin-status {
+  font-size: 13px;
+  margin: 0;
+}
