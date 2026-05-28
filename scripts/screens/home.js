@@ -143,14 +143,9 @@ async function renderOverview() {
     return;
   }
 
-  // CRITICAL: must wait for registry before deciding view mode, otherwise
-  // first paint uses personal view (sync check returns false for missing
-  // registry) and second paint uses team view (registry has loaded by then),
-  // causing the timeline to flip-flop between visits to dashboard and back.
+  // Wait for registry before deciding view mode (avoid flip-flop)
   await loadRegistry().catch(() => {});
 
-  // Managers + dev see a TEAM timeline (everyones scans, with salesperson
-  // chip on each row). Sales role sees ONLY their own scans.
   const isTeamView = hasPermissionSync("viewAllData");
   const cacheKey = isTeamView
     ? `teamOverview:all`
@@ -159,6 +154,12 @@ async function renderOverview() {
   const fetcher = isTeamView
     ? () => mergeTeamWithPersonal(sp)
     : () => getHomeOverview(sp);
+
+  // TEMPORARY: invalidate the cache entry before reading. Were debugging
+  // home flip-flop issues and the cache appears to be storing stale shapes
+  // or wrong data across navigations. Force-fresh until stable; bring back
+  // when caching architecture is solid.
+  invalidateCache(cacheKey);
 
   const { value: cached, isStale, freshPromise } = await getOrFetch(
     cacheKey,
@@ -428,18 +429,29 @@ export function invalidateHistoryCache() {
 // Returns the same shape as getHomeOverview so paintCounters/paintTimeline
 // don't need to know the difference.
 async function mergeTeamWithPersonal(salesName) {
-  // Fire both in parallel — minimizes total wait
+  // Fire both in parallel — minimizes total wait. We store the RAW team
+  // scans in the cached value; dedup happens at paint time via the
+  // dedupeTeamTimeline helper so cached re-renders also benefit.
   const [personal, team] = await Promise.all([
     getHomeOverview(salesName),
     getTeamOverview(),
   ]);
 
-  // Build a unified timeline. Dedupe by salesperson+customer so the same
-  // person scanning the same customer multiple times shows once (newest
-  // entry, with summed photoCount). Matches the dedup behavior of the
-  // personal-view timeline.
+  return {
+    ...personal,
+    // Carry the raw recent scans through. Pre-dedupe so the cached
+    // value already has clean data. The helper is idempotent so
+    // running it on already-deduped data is a no-op.
+    timeline: dedupeTeamTimeline(team?.recentScans || []),
+  };
+}
+
+// Dedupe team timeline entries by salesperson+customer. Idempotent —
+// safe to run on already-deduped data. Pure function (no side effects)
+// so it can run on every paint, cached or fresh.
+function dedupeTeamTimeline(scans) {
   const dedupMap = new Map();
-  (team?.recentScans || []).forEach((s) => {
+  (scans || []).forEach((s) => {
     const key = `${s.salesperson || ""}::${(s.customer || "").toLowerCase()}`;
     const existing = dedupMap.get(key);
     if (!existing) {
@@ -451,23 +463,21 @@ async function mergeTeamWithPersonal(salesName) {
         salesperson: s.salesperson,
       });
     } else {
-      // Keep latest timestamp + sum the photo counts
       const ts1 = new Date(existing.timestamp || 0).getTime();
       const ts2 = new Date(s.timestamp || 0).getTime();
-      existing.photoCount = (existing.photoCount || 0) + (s.photoCount || 0);
+      // Photo counts only summed if the inputs are DISTINCT scans
+      // (different timestamps). If we get the same timestamp twice
+      // its the same scan and we should NOT double-count.
+      if (ts2 !== ts1) {
+        existing.photoCount = (existing.photoCount || 0) + (s.photoCount || 0);
+      }
       if (ts2 > ts1) {
         existing.timestamp = s.timestamp;
         existing.folderId = s.folderId;
       }
     }
   });
-  const teamTimeline = Array.from(dedupMap.values())
+  return Array.from(dedupMap.values())
     .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
     .slice(0, 12);
-
-  // Personal counters stay personal; timeline becomes team-wide.
-  return {
-    ...personal,
-    timeline: teamTimeline,
-  };
 }
