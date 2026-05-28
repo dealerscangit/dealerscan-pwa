@@ -34,7 +34,7 @@ import {
 import "./errorReporter.js"; // side-effect: installs global window error handlers
 import { checkBackendVersion } from "./versionCheck.js";
 import { processQueue, count as queueCount } from "./offlineQueue.js";
-import { getOrFetch } from "./dataCache.js";
+import { getOrFetch, invalidateAll as invalidateDataCache } from "./dataCache.js";
 // Note: getHomeOverview and getCurrentSalesperson are imported above via
 // other import statements; do not re-import here or we get duplicate-
 // identifier syntax errors and the whole module fails to load (blank screen).
@@ -81,6 +81,11 @@ if (localStorage.getItem("ds.debug") === "1") {
   };
   console.log("[DealerScan PWA] booted. Signed in as:", getCurrentSalesperson() || "(none)");
 }
+
+// Clear any cached responses from the previous session at boot. Specifically
+// guards against stale error states (e.g. yesterday's permission errors got
+// cached as empty data). One-time cost, no perf impact.
+invalidateDataCache();
 
 // Parallel prefetch — kick off all the slow API calls AT ONCE rather
 // than letting each screen wait for its own. By the time the user lands
