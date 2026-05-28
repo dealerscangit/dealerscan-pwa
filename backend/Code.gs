@@ -513,14 +513,18 @@ function getHomeOverview(e) {
       }
     });
 
-    // Read CustomerHistory for this salesperson — names only
+    // Read CustomerHistory for this salesperson — names only.
+    // Track BOTH the active customer set AND whether a row exists for this
+    // salesperson, so we can distinguish "new user with no row" (show all)
+    // from "user cleared their history" (show nothing).
     var historySheet = ss.getSheetByName(HISTORY_SHEET_NAME);
     var activeCustomers = {};
+    var spRowExists = false;
     if (historySheet) {
       var hdata = historySheet.getDataRange().getValues();
       for (var hi = 0; hi < hdata.length; hi++) {
         if (hdata[hi][0] && hdata[hi][0].toString().trim() === salesName) {
-          // Columns B onwards are customer names in recency order
+          spRowExists = true;
           for (var hc = 1; hc < hdata[hi].length; hc++) {
             var nm = (hdata[hi][hc] || "").toString().trim();
             if (nm) activeCustomers[nm.toLowerCase()] = true;
@@ -529,13 +533,12 @@ function getHomeOverview(e) {
         }
       }
     }
-    var hasHistory = Object.keys(activeCustomers).length > 0;
 
     var timeline = Object.keys(byCustomer).map(function(k) { return byCustomer[k]; });
-    // If the salesperson has a CustomerHistory row, filter timeline to those
-    // names only. If they have NO row (new user or fully cleared), fall
-    // through and show all of todays scans — better than showing nothing.
-    if (hasHistory) {
+    // If salesperson has a row in CustomerHistory (even empty), filter to
+    // those names only. An empty row → empty timeline. If they have no row
+    // at all (brand new user), fall through and show all of today's scans.
+    if (spRowExists) {
       timeline = timeline.filter(function(s) {
         return activeCustomers[(s.customer || "").toLowerCase()] === true;
       });
@@ -727,7 +730,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.12"); }
+function getVersion(e) { return ContentService.createTextOutput("1.13"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
@@ -1234,29 +1237,38 @@ function getTeamOverview(e) {
     // user mentioned for finding any customer ever scanned.
     var historySheet = ss.getSheetByName(HISTORY_SHEET_NAME);
     var activeBySp = {};       // salesperson name -> { customerLower: true }
-    var spHasHistory = {};     // salesperson name -> boolean (has any row)
+    var spHasRow = {};         // salesperson name -> row EXISTS (even if empty)
     if (historySheet) {
       var hd = historySheet.getDataRange().getValues();
       for (var hi = 0; hi < hd.length; hi++) {
         var spName = (hd[hi][0] || "").toString().trim();
         if (!spName) continue;
         activeBySp[spName] = {};
-        spHasHistory[spName] = false;
+        spHasRow[spName] = true;  // row exists for this salesperson
         for (var hc = 1; hc < hd[hi].length; hc++) {
           var nm = (hd[hi][hc] || "").toString().trim();
           if (nm) {
             activeBySp[spName][nm.toLowerCase()] = true;
-            spHasHistory[spName] = true;
           }
         }
       }
     }
     // Helper: is this scan visible for this salesperson's curated view?
-    // If they have NO history row at all, fall through (show everything).
-    // If they have a row, only show customers in it.
+    //
+    // Case 1: salesperson has NO row in CustomerHistory sheet at all
+    //         -> brand new user. Show everything from ScanLog so they
+    //            don't see an empty timeline before their first save.
+    //
+    // Case 2: salesperson HAS a row but it's empty (all customer columns blank)
+    //         -> they intentionally cleared their history. Show NOTHING for them.
+    //
+    // Case 3: salesperson has a row with N customers
+    //         -> only show scans whose customer is in the row.
     function isVisibleForSp(sp, customer) {
-      if (!spHasHistory[sp]) return true;
+      if (!spHasRow[sp]) return true;  // Case 1 — new user
       return activeBySp[sp] && activeBySp[sp][(customer || "").toLowerCase()] === true;
+      // Note: when activeBySp[sp] is empty (Case 2), the lookup returns
+      // undefined, so this returns false → row hidden. Correct.
     }
 
     var data = sheet.getDataRange().getValues();
