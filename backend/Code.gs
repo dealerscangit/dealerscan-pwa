@@ -727,7 +727,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.11"); }
+function getVersion(e) { return ContentService.createTextOutput("1.12"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
@@ -1227,6 +1227,38 @@ function getTeamOverview(e) {
     var ss = getHistorySpreadsheet(), sheet = ss.getSheetByName("ScanLog");
     if (!sheet) return json({ todayBySalesperson: [], recentScans: [], inactiveToday: [], teamTotalToday: 0, teamTotalWeek: 0, searchableCustomers: [] });
 
+    // Read CustomerHistory into a per-salesperson active-customer map.
+    // The team timeline filters by this map so manual sheet deletes
+    // hide the row visually (same as getHomeOverview does for personal).
+    // Searchable customers stays unfiltered — the deep "data bank" the
+    // user mentioned for finding any customer ever scanned.
+    var historySheet = ss.getSheetByName(HISTORY_SHEET_NAME);
+    var activeBySp = {};       // salesperson name -> { customerLower: true }
+    var spHasHistory = {};     // salesperson name -> boolean (has any row)
+    if (historySheet) {
+      var hd = historySheet.getDataRange().getValues();
+      for (var hi = 0; hi < hd.length; hi++) {
+        var spName = (hd[hi][0] || "").toString().trim();
+        if (!spName) continue;
+        activeBySp[spName] = {};
+        spHasHistory[spName] = false;
+        for (var hc = 1; hc < hd[hi].length; hc++) {
+          var nm = (hd[hi][hc] || "").toString().trim();
+          if (nm) {
+            activeBySp[spName][nm.toLowerCase()] = true;
+            spHasHistory[spName] = true;
+          }
+        }
+      }
+    }
+    // Helper: is this scan visible for this salesperson's curated view?
+    // If they have NO history row at all, fall through (show everything).
+    // If they have a row, only show customers in it.
+    function isVisibleForSp(sp, customer) {
+      if (!spHasHistory[sp]) return true;
+      return activeBySp[sp] && activeBySp[sp][(customer || "").toLowerCase()] === true;
+    }
+
     var data = sheet.getDataRange().getValues();
     var now = new Date();
     var startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -1245,8 +1277,10 @@ function getTeamOverview(e) {
       var photoCount = row[7] || 0;
       if (!sp || typeof ts !== "number") continue;
 
-      // Today bucket
-      if (ts >= startOfDay) {
+      // Today bucket — filtered by each salesperson's CustomerHistory.
+      // Scans whose customer was deleted from history are excluded from
+      // both the per-salesperson counts AND the team timeline.
+      if (ts >= startOfDay && isVisibleForSp(sp, customer)) {
         if (!bySp[sp]) bySp[sp] = { scans: 0, lastScanAt: 0, photoCount: 0 };
         bySp[sp].scans++;
         bySp[sp].photoCount += photoCount;
