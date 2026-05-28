@@ -143,9 +143,14 @@ async function renderOverview() {
     return;
   }
 
-  // Managers + dev see a TEAM timeline (everyone's scans, with salesperson
-  // chip on each row). Sales role sees ONLY their own scans (current behavior).
-  // The cache key differs by mode so we don't mix the two datasets.
+  // CRITICAL: must wait for registry before deciding view mode, otherwise
+  // first paint uses personal view (sync check returns false for missing
+  // registry) and second paint uses team view (registry has loaded by then),
+  // causing the timeline to flip-flop between visits to dashboard and back.
+  await loadRegistry().catch(() => {});
+
+  // Managers + dev see a TEAM timeline (everyones scans, with salesperson
+  // chip on each row). Sales role sees ONLY their own scans.
   const isTeamView = hasPermissionSync("viewAllData");
   const cacheKey = isTeamView
     ? `teamOverview:all`
@@ -429,19 +434,36 @@ async function mergeTeamWithPersonal(salesName) {
     getTeamOverview(),
   ]);
 
-  // Build a unified timeline from team.recentScans, sorted desc by timestamp.
-  // Each entry carries the salesperson so buildTimelineRow can render the chip.
-  const teamTimeline = (team?.recentScans || [])
-    .slice()
-    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-    .slice(0, 12)
-    .map((s) => ({
-      customer: s.customer,
-      photoCount: s.photoCount || 0,
-      timestamp: s.timestamp,
-      folderId: s.folderId,
-      salesperson: s.salesperson,
-    }));
+  // Build a unified timeline. Dedupe by salesperson+customer so the same
+  // person scanning the same customer multiple times shows once (newest
+  // entry, with summed photoCount). Matches the dedup behavior of the
+  // personal-view timeline.
+  const dedupMap = new Map();
+  (team?.recentScans || []).forEach((s) => {
+    const key = `${s.salesperson || ""}::${(s.customer || "").toLowerCase()}`;
+    const existing = dedupMap.get(key);
+    if (!existing) {
+      dedupMap.set(key, {
+        customer: s.customer,
+        photoCount: s.photoCount || 0,
+        timestamp: s.timestamp,
+        folderId: s.folderId,
+        salesperson: s.salesperson,
+      });
+    } else {
+      // Keep latest timestamp + sum the photo counts
+      const ts1 = new Date(existing.timestamp || 0).getTime();
+      const ts2 = new Date(s.timestamp || 0).getTime();
+      existing.photoCount = (existing.photoCount || 0) + (s.photoCount || 0);
+      if (ts2 > ts1) {
+        existing.timestamp = s.timestamp;
+        existing.folderId = s.folderId;
+      }
+    }
+  });
+  const teamTimeline = Array.from(dedupMap.values())
+    .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+    .slice(0, 12);
 
   // Personal counters stay personal; timeline becomes team-wide.
   return {
