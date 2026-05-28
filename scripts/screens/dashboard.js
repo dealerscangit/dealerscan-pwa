@@ -79,19 +79,22 @@ async function renderTeamSection() {
   const teamSection = document.getElementById("dashboard-team-section");
   if (!teamSection) return;
 
-  // CRITICAL: wait for the registry to load before checking permissions.
-  // hasPermissionSync reads from a cached registry; on first dashboard
-  // visit after sign-in the cache may be empty → returns false → team
-  // section stays hidden for managers who SHOULD see it. Same race
-  // condition we fixed in home.js renderOverview.
-  await loadRegistry().catch(() => {});
+  await loadRegistry().catch((err) => console.warn("[dash team] registry load failed:", err));
 
-  // Permission gate. If user lacks viewAllData, keep section hidden.
-  if (!hasPermissionSync("viewAllData")) {
+  // TEMPORARY diagnostic — remove once team section confirmed working
+  // for managers. Logs to console so we can see what's blocking the
+  // team section from rendering when a manager opens the dashboard.
+  const sp = (await import("../currentUser.js")).getCurrentSalesperson();
+  const hasPerm = hasPermissionSync("viewAllData");
+  console.log(`[dash team] sp="${sp}" viewAllData=${hasPerm}`);
+
+  if (!hasPerm) {
     teamSection.hidden = true;
+    console.log(`[dash team] hidden — permission check failed`);
     return;
   }
   teamSection.hidden = false;
+  console.log(`[dash team] visible — fetching team data...`);
 
   // Use the same shared cache pattern as the personal data
   const { value: cached, freshPromise } = await getOrFetch(
