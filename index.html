@@ -18,7 +18,7 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=70" />
+  <link rel="stylesheet" href="styles/main.css?v=71" />
   <!-- Google Identity Services (Sign-In with Google). async defer means
        it loads in parallel with the rest of the page; auth/google.js polls
        for window.google.accounts.id before rendering the button. -->
@@ -41,6 +41,18 @@
            sit in the same column on the screen. -->
       <div class="gis-wrap">
         <div id="gis-button-container" class="gis-button-container"></div>
+
+        <!-- Remember me + Face ID consent. Checked by default since these
+             are typically work iPads — they want it remembered. Tapping
+             the row toggles the checkbox so the whole thing is one big tap target. -->
+        <label class="remember-row" id="remember-row">
+          <input type="checkbox" id="remember-checkbox" checked />
+          <span class="remember-text">
+            <span class="remember-title">Keep me signed in</span>
+            <span class="remember-sub" id="remember-sub">Use Face ID to unlock next time</span>
+          </span>
+        </label>
+
         <p id="signin-status" class="muted" hidden>Verifying…</p>
         <p id="signin-error" class="signin-error" hidden></p>
       </div>
@@ -788,6 +800,6 @@
   </div>
   </main>
 
-  <script type="module" src="scripts/app.js?v=70"></script>
+  <script type="module" src="scripts/app.js?v=71"></script>
 </body>
 </html>

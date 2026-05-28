@@ -17,6 +17,7 @@
 import { renderSigninButton } from "../auth/google.js";
 import { verifyTokenWithBackend } from "../auth/verify.js";
 import { setSession, clearSession } from "../auth/session.js";
+import { isBiometricAvailable, enrollBiometric } from "../auth/biometric.js";
 import { setCurrentSalesperson, SALESPEOPLE } from "../currentUser.js";
 
 let _showScreen = null;
@@ -44,6 +45,21 @@ export async function renderSigninGoogle() {
   if (errorEl) errorEl.hidden = true;
   if (statusEl) statusEl.hidden = true;
   container.innerHTML = "";
+
+  // Customize the Remember me row based on what this device supports.
+  // If biometric is available -> "Use Face ID to unlock next time"
+  // If not -> "Stay signed in on this device"
+  const rememberSub = document.getElementById("remember-sub");
+  if (rememberSub) {
+    try {
+      const biometricOk = await isBiometricAvailable();
+      rememberSub.textContent = biometricOk
+        ? "Use Face ID to unlock next time"
+        : "Stay signed in on this device";
+    } catch {
+      rememberSub.textContent = "Stay signed in on this device";
+    }
+  }
 
   try {
     await renderSigninButton(container, async (jwt) => {
@@ -96,19 +112,43 @@ async function handleCredential(jwt) {
       throw new Error(msg);
     }
 
-    // Success: persist session + navigate
+    // Read the Remember me preference. Default true since the row defaults
+    // checked. User can uncheck it for shared/public devices.
+    const rememberCheckbox = document.getElementById("remember-checkbox");
+    const persistent = rememberCheckbox ? rememberCheckbox.checked : false;
+
     setSession(jwt, {
       email: result.email,
       name: result.name,
       role: result.role,
       picture: result.picture,
       tokenExpiresAt: result.tokenExpiresAt,
-    });
+    }, { persistent });
 
-    // Also write the legacy "current salesperson" key so existing code
-    // that reads getCurrentSalesperson() keeps working until we fully
-    // migrate to email-based identity everywhere.
     setCurrentSalesperson(result.name);
+
+    // If user opted into persistent + biometric is available, prompt to
+    // enroll. Failure is non-fatal — we still complete the sign-in, just
+    // without biometric on next launch. User can enable later in Settings.
+    if (persistent) {
+      try {
+        const biometricOk = await isBiometricAvailable();
+        if (biometricOk) {
+          // Show a brief status so the user knows whats happening when
+          // the Face ID prompt appears
+          if (statusEl) {
+            statusEl.hidden = false;
+            statusEl.textContent = "Setting up Face ID…";
+          }
+          const enrolled = await enrollBiometric(result.email, result.name);
+          if (!enrolled) {
+            console.log("[signin] biometric enrollment skipped or cancelled");
+          }
+        }
+      } catch (err) {
+        console.warn("[signin] biometric enroll error (non-fatal):", err);
+      }
+    }
 
     if (_showScreen) _showScreen("home");
   } catch (err) {

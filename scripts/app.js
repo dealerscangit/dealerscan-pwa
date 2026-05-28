@@ -16,6 +16,7 @@ import {
 } from "./currentUser.js";
 import { renderSigninPicker, renderSigninGoogle, attachSigninHandlers } from "./screens/signin.js";
 import { isSignedIn as isAuthSignedIn } from "./auth/session.js";
+import { needsBiometricUnlock, showLockScreenAndUnlock } from "./auth/lockScreen.js";
 import { renderHome, attachHomeHandlers } from "./screens/home.js";
 import { renderCustomer, attachCustomerHandlers } from "./screens/customer.js";
 import { renderCamera, attachCameraHandlers } from "./screens/camera.js";
@@ -239,10 +240,25 @@ window.addEventListener("DOMContentLoaded", () => {
   attachSignoutButton();
 
   // Route to initial screen
-  // Boot: check auth session (sessionStorage token). If signed in AND not
-  // expired, go straight to home. Otherwise show the sign-in screen.
-  // Legacy isSignedIn() check (localStorage salesperson) kept as a fallback
-  // for users mid-migration who have a salesperson but no token — they get
-  // sent to signin to upgrade.
-  showScreen(isAuthSignedIn() ? "home" : "signin");
+  // Boot routing with biometric gate.
+  //
+  // Three cases:
+  //   A) We have a persistent session AND biometric is enrolled -> lock screen
+  //      until user authenticates. On success: home. On fail: signin.
+  //   B) We have a session but no biometric required -> straight to home
+  //   C) No session -> sign-in screen
+  //
+  // Case A is the most common for daily use on a remembered iPad.
+  if (needsBiometricUnlock()) {
+    showLockScreenAndUnlock().then((unlocked) => {
+      if (unlocked) {
+        showScreen("home");
+      } else {
+        // Session was cleared by the lock screen on failure / signout tap
+        showScreen("signin");
+      }
+    });
+  } else {
+    showScreen(isAuthSignedIn() ? "home" : "signin");
+  }
 });
