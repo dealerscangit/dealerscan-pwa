@@ -7,7 +7,7 @@ import {
   isPersistentMode, isSignedIn, clearSession, getName,
 } from "./session.js";
 import {
-  isBiometricSupported, hasBiometricEnrolled, verifyBiometric,
+  isBiometricSupported, hasBiometricEnrolled, verifyBiometric, biometricLabel,
 } from "./biometric.js";
 
 /**
@@ -65,7 +65,7 @@ function paintLockScreen() {
     <div class="ds-lock-content">
       <div class="ds-lock-avatar">${escapeHtml((getName() || "?").charAt(0).toUpperCase())}</div>
       <h1 class="ds-lock-title">Welcome back, ${escapeHtml((getName() || "").split(" ")[0])}</h1>
-      <p class="ds-lock-sub" id="ds-lock-sub">Tap below to unlock with Face ID</p>
+      <p class="ds-lock-sub" id="ds-lock-sub">Tap below to unlock with ${escapeHtml(biometricLabel())}</p>
       <button class="ds-lock-button" id="ds-lock-button" type="button">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Unlock
@@ -93,7 +93,7 @@ function paintLockFailure() {
 async function retryUnlock() {
   const sub = document.getElementById("ds-lock-sub");
   if (sub) {
-    sub.textContent = "Tap below to unlock with Face ID";
+    sub.textContent = "Tap below to unlock with " + biometricLabel();
     sub.style.color = "";
   }
   const ok = await verifyBiometric();

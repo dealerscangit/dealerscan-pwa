@@ -182,3 +182,44 @@ function base64UrlToBuffer(b64url) {
   for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
   return bytes.buffer;
 }
+
+
+// ──────────────────────────────────────────────────────────────────
+// Platform-aware label for the biometric method this device uses.
+// The actual system prompt shown to the user (from WebAuthn) reflects
+// the real method — these labels are just for our UI strings around it.
+//
+// Strategy:
+//   iOS         → "Face ID"   (iPhone X+/iPad Pro 2018+, the vast majority)
+//   Android     → "fingerprint" (most common; some Pixels/Samsung have face)
+//   Windows     → "Windows Hello"
+//   Other       → "biometric"
+//
+// We deliberately keep this simple — the OS prompt is authoritative.
+// If a user has Touch ID on an older iPhone they'll see "Touch ID" in
+// the system dialog; our label just says "Face ID" because that's the
+// default expectation for modern hardware.
+// ──────────────────────────────────────────────────────────────────
+export function biometricLabel() {
+  const ua = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+
+  // iOS detection: standard UA strings + iPadOS pretending to be Mac
+  // (iPad on iPadOS 13+ uses MacIntel platform + touch points)
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) return "Face ID";
+
+  if (/Android/i.test(ua)) return "fingerprint";
+  if (/Windows/i.test(ua)) return "Windows Hello";
+  return "biometric";
+}
+
+// Capitalized variant for sentence-start use ("Face ID will…", "Fingerprint will…")
+export function biometricLabelCap() {
+  const label = biometricLabel();
+  // Already capitalized for iOS/Windows ("Face ID", "Windows Hello").
+  // Android returns "fingerprint" lowercase; uppercase the first letter.
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}

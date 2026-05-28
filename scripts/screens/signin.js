@@ -17,7 +17,7 @@
 import { renderSigninButton } from "../auth/google.js";
 import { verifyTokenWithBackend } from "../auth/verify.js";
 import { setSession, clearSession } from "../auth/session.js";
-import { isBiometricAvailable, enrollBiometric } from "../auth/biometric.js";
+import { isBiometricAvailable, enrollBiometric, biometricLabel } from "../auth/biometric.js";
 import { setCurrentSalesperson, SALESPEOPLE } from "../currentUser.js";
 
 let _showScreen = null;
@@ -47,14 +47,14 @@ export async function renderSigninGoogle() {
   container.innerHTML = "";
 
   // Customize the Remember me row based on what this device supports.
-  // If biometric is available -> "Use Face ID to unlock next time"
-  // If not -> "Stay signed in on this device"
+  // Label varies by platform (Face ID / fingerprint / Windows Hello / etc).
+  // If no biometric -> "Stay signed in on this device"
   const rememberSub = document.getElementById("remember-sub");
   if (rememberSub) {
     try {
       const biometricOk = await isBiometricAvailable();
       rememberSub.textContent = biometricOk
-        ? "Use Face ID to unlock next time"
+        ? `Use ${biometricLabel()} to unlock next time`
         : "Stay signed in on this device";
     } catch {
       rememberSub.textContent = "Stay signed in on this device";
@@ -138,7 +138,7 @@ async function handleCredential(jwt) {
           // the Face ID prompt appears
           if (statusEl) {
             statusEl.hidden = false;
-            statusEl.textContent = "Setting up Face ID…";
+            statusEl.textContent = `Setting up ${biometricLabel()}…`;
           }
           const enrolled = await enrollBiometric(result.email, result.name);
           if (!enrolled) {
