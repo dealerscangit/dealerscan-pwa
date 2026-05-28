@@ -105,8 +105,14 @@ export function setSession(token, profile, { persistent = false } = {}) {
 export function clearSession() {
   [TOKEN_KEY, EMAIL_KEY, NAME_KEY, ROLE_KEY, PICTURE_KEY, EXPIRES_AT_KEY,
    VIEW_AS_EMAIL_KEY, VIEW_AS_NAME_KEY].forEach(removeKey);
-  // Also clear the persistent flag and any biometric credential
   localStorage.removeItem(PERSISTENT_FLAG_KEY);
+
+  // Also clear legacy localStorage keys so the next sign-in doesn't
+  // inherit stale identity. These are the bridges to pre-Sign-In code
+  // that reads getCurrentSalesperson() directly from localStorage.
+  localStorage.removeItem("ds.salesperson");
+  sessionStorage.removeItem("ds.original_sp");
+  sessionStorage.removeItem("ds.dev_session");
 }
 
 export function isPersistentMode() {

@@ -158,6 +158,35 @@ window.addEventListener("online", () => {
 });
 
 // ───────────────────────────────────────────────────────────
+// Legacy bridge: sync the old localStorage.ds.salesperson key from
+// the auth session's verified name. Lets existing code that uses
+// getCurrentSalesperson() keep working alongside the new auth system.
+// ───────────────────────────────────────────────────────────
+function syncLegacyFromAuth() {
+  try {
+    // Read the auth session's name directly from storage. Persistent mode
+    // mirrors to localStorage; otherwise sessionStorage has it. We try
+    // localStorage first to match the read order in session.js.
+    const name =
+      localStorage.getItem("ds.auth.name") ||
+      sessionStorage.getItem("ds.auth.name") ||
+      "";
+
+    if (name && name.trim()) {
+      const existing = localStorage.getItem("ds.salesperson");
+      if (existing !== name) {
+        localStorage.setItem("ds.salesperson", name);
+        console.log("[legacy-sync] salesperson updated from auth:", existing, "->", name);
+      }
+    } else {
+      console.warn("[legacy-sync] no auth name found in storage");
+    }
+  } catch (err) {
+    console.warn("[legacy-sync] failed:", err);
+  }
+}
+
+// ───────────────────────────────────────────────────────────
 // Screen routing
 // ───────────────────────────────────────────────────────────
 const SCREEN_RENDERERS = {
@@ -240,6 +269,19 @@ window.addEventListener("DOMContentLoaded", () => {
   attachSignoutButton();
 
   // Route to initial screen
+  // CRITICAL: sync the legacy localStorage salesperson key from the auth
+  // session before any screen renders. Without this, after a Face ID
+  // unlock the home screen reads whatever stale value was in
+  // localStorage.ds.salesperson (often a previous test user) and looks
+  // THAT up in the registry — leading to wrong role + wrong data.
+  //
+  // The signin path does this implicitly via setCurrentSalesperson()
+  // inside handleCredential. The biometric-unlock path skips that
+  // because no fresh sign-in happens; just session reveal.
+  if (isAuthSignedIn()) {
+    syncLegacyFromAuth();
+  }
+
   // Boot routing with biometric gate.
   //
   // Three cases:
@@ -252,9 +294,11 @@ window.addEventListener("DOMContentLoaded", () => {
   if (needsBiometricUnlock()) {
     showLockScreenAndUnlock().then((unlocked) => {
       if (unlocked) {
+        // After unlock, re-sync legacy state in case clearSession was
+        // called during a failed attempt (defensive — usually no-op here)
+        syncLegacyFromAuth();
         showScreen("home");
       } else {
-        // Session was cleared by the lock screen on failure / signout tap
         showScreen("signin");
       }
     });
