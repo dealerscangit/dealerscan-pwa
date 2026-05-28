@@ -14,7 +14,8 @@ import {
   clearCurrentSalesperson,
   isSignedIn,
 } from "./currentUser.js";
-import { renderSigninPicker, attachSigninHandlers } from "./screens/signin.js";
+import { renderSigninPicker, renderSigninGoogle, attachSigninHandlers } from "./screens/signin.js";
+import { isSignedIn as isAuthSignedIn } from "./auth/session.js";
 import { renderHome, attachHomeHandlers } from "./screens/home.js";
 import { renderCustomer, attachCustomerHandlers } from "./screens/customer.js";
 import { renderCamera, attachCameraHandlers } from "./screens/camera.js";
@@ -159,7 +160,7 @@ window.addEventListener("online", () => {
 // Screen routing
 // ───────────────────────────────────────────────────────────
 const SCREEN_RENDERERS = {
-  signin:   renderSigninPicker,
+  signin:   renderSigninGoogle,  // GIS button (was renderSigninPicker)
   home:     renderHome,
   customer: renderCustomer,
   camera:   renderCamera,
@@ -238,5 +239,10 @@ window.addEventListener("DOMContentLoaded", () => {
   attachSignoutButton();
 
   // Route to initial screen
-  showScreen(isSignedIn() ? "home" : "signin");
+  // Boot: check auth session (sessionStorage token). If signed in AND not
+  // expired, go straight to home. Otherwise show the sign-in screen.
+  // Legacy isSignedIn() check (localStorage salesperson) kept as a fallback
+  // for users mid-migration who have a salesperson but no token — they get
+  // sent to signin to upgrade.
+  showScreen(isAuthSignedIn() ? "home" : "signin");
 });

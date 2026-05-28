@@ -18,7 +18,11 @@
   <meta name="apple-mobile-web-app-title" content="DealerScan" />
   <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
 
-  <link rel="stylesheet" href="styles/main.css?v=69" />
+  <link rel="stylesheet" href="styles/main.css?v=70" />
+  <!-- Google Identity Services (Sign-In with Google). async defer means
+       it loads in parallel with the rest of the page; auth/google.js polls
+       for window.google.accounts.id before rendering the button. -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <main>
@@ -28,10 +32,22 @@
          ───────────────────────────────────────────── -->
     <section data-screen="signin" hidden>
       <header class="signin-header">
-        <h1>Welcome</h1>
-        <p class="muted">Tap your name to get started.</p>
+        <h1>DealerScan</h1>
+        <p class="muted">Sign in with your dealership Google account.</p>
       </header>
-      <div class="picker-grid" id="picker-grid"></div>
+
+      <!-- Google Identity Services renders its button into this container.
+           Wrapped in a centered flex column so the button + error message
+           sit in the same column on the screen. -->
+      <div class="gis-wrap">
+        <div id="gis-button-container" class="gis-button-container"></div>
+        <p id="signin-status" class="muted" hidden>Verifying…</p>
+        <p id="signin-error" class="signin-error" hidden></p>
+      </div>
+
+      <!-- LEGACY 19-tile picker — hidden by default. Dev gets access via
+           the "View as" affordance in Settings post-Sign-In. -->
+      <div class="picker-grid" id="picker-grid" hidden></div>
     </section>
 
     <!-- ─────────────────────────────────────────────
@@ -497,10 +513,18 @@
             </div>
           </div>
 
-          <button class="settings-row settings-row-button" id="settings-switch-user" type="button">
+          <button class="settings-row settings-row-button" id="settings-switch-user" type="button" hidden>
             <div class="settings-row-text">
-              <p class="settings-row-title">Switch user</p>
-              <p class="settings-row-sub">Sign out and pick a different salesperson</p>
+              <p class="settings-row-title">View as user</p>
+              <p class="settings-row-sub">Dev: inspect another user's view (does not change your identity)</p>
+            </div>
+            <svg class="settings-row-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+
+          <button class="settings-row settings-row-button" id="settings-sign-out" type="button">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Sign out</p>
+              <p class="settings-row-sub">End this session</p>
             </div>
             <svg class="settings-row-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </button>
@@ -764,6 +788,6 @@
   </div>
   </main>
 
-  <script type="module" src="scripts/app.js?v=69"></script>
+  <script type="module" src="scripts/app.js?v=70"></script>
 </body>
 </html>
