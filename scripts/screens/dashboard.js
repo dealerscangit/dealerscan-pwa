@@ -8,7 +8,7 @@
 
 import { getCurrentSalesperson } from "../currentUser.js";
 import { getHomeOverview, getTeamOverview } from "../apiClient.js";
-import { getOrFetch } from "../dataCache.js";
+import { getOrFetch, invalidate as invalidateCache } from "../dataCache.js";
 import { hasPermissionSync, loadRegistry } from "../roles.js";
 
 let _showScreen = null;
@@ -81,22 +81,14 @@ async function renderTeamSection() {
 
   await loadRegistry().catch((err) => console.warn("[dash team] registry load failed:", err));
 
-  // TEMPORARY diagnostic — remove once team section confirmed working
-  // for managers. Logs to console so we can see what's blocking the
-  // team section from rendering when a manager opens the dashboard.
-  const sp = (await import("../currentUser.js")).getCurrentSalesperson();
-  const hasPerm = hasPermissionSync("viewAllData");
-  console.log(`[dash team] sp="${sp}" viewAllData=${hasPerm}`);
-
-  if (!hasPerm) {
+  if (!hasPermissionSync("viewAllData")) {
     teamSection.hidden = true;
-    console.log(`[dash team] hidden — permission check failed`);
     return;
   }
   teamSection.hidden = false;
-  console.log(`[dash team] visible — fetching team data...`);
 
-  // Use the same shared cache pattern as the personal data
+  // Force-fresh team data on every visit until cache architecture stabilizes
+  invalidateCache("teamOverview:all");
   const { value: cached, freshPromise } = await getOrFetch(
     "teamOverview:all",
     () => getTeamOverview()
