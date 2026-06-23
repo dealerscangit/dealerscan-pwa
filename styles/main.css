@@ -1,0 +1,3768 @@
+/* styles/main.css — DealerScan PWA
+   Extension-matched: navy gradient + glass cards + Google-blue accent.
+   Tokens lifted from new-source/overlay.css for brand cohesion. */
+
+:root {
+  --bg-gradient: linear-gradient(170deg, #1a5296 0%, #163f7a 45%, #112f63 80%, #0d2654 100%);
+  --bg-bottom: #0d2654;
+
+  /* Surfaces — opacity-layered white over navy (extension parity) */
+  --surface:        rgba(255, 255, 255, 0.05);
+  --surface-strong: rgba(255, 255, 255, 0.08);
+  --surface-hover:  rgba(255, 255, 255, 0.13);
+  --surface-active: rgba(255, 255, 255, 0.18);
+  --border:         rgba(255, 255, 255, 0.12);
+  --border-strong:  rgba(255, 255, 255, 0.22);
+
+  /* Text */
+  --text:        #ffffff;
+  --text-muted:  rgba(255, 255, 255, 0.7);
+  --text-dim:    rgba(255, 255, 255, 0.5);
+  --text-faint:  rgba(255, 255, 255, 0.35);
+  --text-ghost:  rgba(255, 255, 255, 0.25);
+
+  /* Accent — blue gradient (navigation, recents, secondary actions) */
+  --accent-grad: linear-gradient(135deg, #4285f4, #2b6ed4);
+  --accent:      #4285f4;
+  --accent-soft: #6ca0f7;
+  --accent-deep: #2b6ed4;
+
+  /* Primary destructive — pink gradient (upload, save, irreversible) */
+  --primary-grad: linear-gradient(135deg, #e94560, #c73652);
+  --primary:      #e94560;
+  --primary-deep: #c73652;
+  --primary-glow: rgba(233, 69, 96, 0.35);
+
+  --success: #34d399;
+  --danger:  #f87171;
+
+  /* Radii — bumped slightly to match new polish direction.
+     xl is the new "card/profile" radius, lg is most rows + buttons. */
+  --radius-2xl: 22px;
+  --radius-xl: 18px;
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-pill: 99px;
+
+  /* Shadow scale — layered for depth.
+     Each is a stack of (close-tight) + (far-soft) for a real sense of lift.
+     Use sm for inline items, md for cards, lg for raised CTAs, glow for the
+     primary action's beacon. */
+  --shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(255, 255, 255, 0.04) inset;
+  --shadow-md:
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-lg:
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --shadow-glow-accent:
+    0 8px 24px rgba(66, 133, 244, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --shadow-glow-primary:
+    0 8px 24px rgba(231, 69, 96, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  /* Motion easing — restrained, purposeful, never bouncy.
+     out-cubic is the default; in-out for screen transitions;
+     ios-spring for taps that should feel rubbery. */
+  --ease-out-cubic: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-ios-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Durations */
+  --dur-fast:   0.14s;
+  --dur-normal: 0.22s;
+  --dur-slow:   0.38s;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  margin: 0; padding: 0;
+  /* Solid bg-bottom (was gradient) to ensure the home indicator zone
+     matches the page bg exactly with no visible color boundary. */
+  min-height: 100%;
+  min-height: 100lvh;
+  background-color: var(--bg-bottom);
+  overscroll-behavior-y: none;
+}
+body {
+  margin: 0; padding: 0;
+  /* Use dvh for layout (content respects URL bar show/hide) but the
+     background layer (body::before below) uses lvh to cover the full
+     screen including the home indicator strip. */
+  height: 100vh; height: 100dvh;
+  background-color: var(--bg-bottom);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  display: flex; flex-direction: column;
+  position: relative;
+  /* Safe area insets handled per-screen — body itself does NOT pad them,
+     because each screen's chrome already accounts for its own top/bottom
+     safe area. Padding here was double-counting and pushing content way
+     down on notched iPhones. Left/right insets still applied here since
+     they're universal and never doubled. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+body::before {
+  content: '';
+  /* SOLID NAVY backstop covering the entire screen including the home
+     indicator zone. Was a gradient; the gradient was causing a visible
+     boundary between the dvh content viewport and the lvh background
+     viewport, showing up as a thin darker band right at the home
+     indicator. Solid color eliminates the boundary entirely.
+     If we want the gradient back later we can layer it inside body,
+     not on this backstop layer. */
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  background: var(--bg-bottom);
+  z-index: -1;
+  pointer-events: none;
+}
+main {
+  flex: 1; display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 1.5rem) 1.25rem 1.25rem;
+  min-height: 0;
+}
+/* When the home screen is active, main strips its top padding because
+   the status strip handles the safe area itself. */
+main:has([data-screen="home"]:not([hidden])) {
+  padding: 0;
+}
+
+/* ────────────────────────────────────────
+   Screen container + transitions
+   ──────────────────────────────────────── */
+[data-screen] {
+  display: flex; flex-direction: column;
+  flex: 1; min-height: 0; gap: 1.25rem;
+  animation: screenFadeIn 0.14s ease-out;
+}
+[data-screen][hidden] { display: none; }
+
+/* HTML's `hidden` attribute defaults to `display:none`, but any explicit
+   `display: flex` (or similar) rule overrides it. Elements we toggle from
+   JS via `.hidden = true/false` need this override or they stay visible.
+   Burned by this once with .camera-fallback; codifying the fix project-wide. */
+[hidden] { display: none !important; }
+
+@keyframes screenFadeIn {
+  /* Opacity-only fade. The previous translateY(4px) translation
+     briefly exposed the body bg at the bottom of the screen during
+     transitions, visible as a flashing line. Pure opacity is cleaner
+     and avoids any layout-shift artifact. */
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; margin: 0; color: var(--text); }
+h2 { font-size: 12px; font-weight: 600; margin: 0; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
+.muted { color: var(--text-dim); }
+.dim   { color: var(--text-faint); }
+.small { font-size: 13px; }
+
+/* ────────────────────────────────────────
+   Inputs (16px min font-size — kills iOS zoom)
+   ──────────────────────────────────────── */
+input[type="text"], input[type="search"] {
+  font: inherit; width: 100%;
+  border: 0.5px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  border-radius: var(--radius-lg);
+  padding: 16px 16px;
+  outline: none;
+  font-size: 17px;
+  -webkit-appearance: none; appearance: none;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur-fast) var(--ease-out-cubic),
+              background var(--dur-fast) var(--ease-out-cubic),
+              box-shadow var(--dur-normal) var(--ease-out-cubic);
+}
+input:focus {
+  border-color: var(--accent-soft);
+  box-shadow: var(--shadow-md), 0 0 0 2px rgba(90, 158, 255, 0.18);
+}
+input::placeholder { color: var(--text-faint); }
+input:focus { border-color: var(--border-strong); background: var(--surface-hover); }
+
+/* ────────────────────────────────────────
+   Shared header + buttons
+   ──────────────────────────────────────── */
+.screen-header { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.screen-header h1 { flex: 1; }
+.icon-button {
+  background: var(--surface-strong);
+  border: 0.5px solid var(--border);
+  border-radius: 50%;
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+.icon-button:active { background: var(--surface-active); color: var(--text); transform: scale(0.94); }
+
+/* Two-tone primary buttons */
+.primary-button, .accent-button, .secondary-button {
+  font: inherit; font-weight: 600; font-size: 16px;
+  border-radius: var(--radius-md);
+  padding: 17px 18px; width: 100%;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  border: 0.5px solid transparent;
+  transition: transform 0.1s ease, box-shadow 0.2s ease, background 0.15s ease, filter 0.2s ease;
+}
+.primary-button {
+  background: var(--primary-grad);
+  color: #fff;
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+.primary-button:active { transform: translateY(1px) scale(0.99); box-shadow: 0 2px 8px var(--primary-glow); }
+.primary-button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+.accent-button {
+  background: var(--accent-grad);
+  color: #fff;
+  border-color: rgba(255,255,255,0.15);
+}
+.accent-button:active { transform: scale(0.98); }
+.accent-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.secondary-button {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+.secondary-button:hover { color: var(--text-muted); }
+.secondary-button:active { background: var(--surface-active); transform: scale(0.98); }
+
+.sticky-action { margin-top: auto; padding-top: 0.5rem; flex-shrink: 0; }
+
+/* ────────────────────────────────────────
+   Sign-in screen — picker
+   ──────────────────────────────────────── */
+.signin-header { padding: 0.5rem 0 0.75rem; flex-shrink: 0; }
+.signin-header h1 { margin-bottom: 6px; }
+.signin-header p  { margin: 0; font-size: 15px; color: var(--text-dim); }
+.picker-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.5rem;
+}
+.picker-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 8px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  font-family: inherit; color: var(--text);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  animation: tileFadeIn 0.28s ease-out backwards;
+  min-height: 96px;
+}
+.picker-tile:hover  { background: var(--surface-hover); }
+.picker-tile:active { transform: scale(0.95); background: var(--surface-active); border-color: var(--border-strong); }
+
+/* Stagger fade-in for the tile grid — feels alive on load */
+@keyframes tileFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.picker-tile:nth-child(3n+1) { animation-delay: 0ms; }
+.picker-tile:nth-child(3n+2) { animation-delay: 30ms; }
+.picker-tile:nth-child(3n+3) { animation-delay: 60ms; }
+
+.picker-tile-initial {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-grad);
+  color: #fff; font-weight: 600; font-size: 18px;
+}
+.picker-tile-name { font-size: 13px; font-weight: 500; text-align: center; line-height: 1.2; }
+
+/* ────────────────────────────────────────
+   Home screen
+   ──────────────────────────────────────── */
+.home-header { padding: 0.25rem 0 0; flex-shrink: 0; }
+.home-header p { margin: 6px 0 0 0; font-size: 15px; }
+.home-greeting { font-size: 34px; font-weight: 700; letter-spacing: -0.7px; margin: 0; color: var(--text); }
+
+.primary-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  background: var(--accent-grad);
+  border: 0.5px solid rgba(255,255,255,0.18);
+  border-radius: var(--radius-xl);
+  padding: 30px 26px 32px;
+  color: #fff; font: inherit; text-align: left;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  width: 100%; flex-shrink: 0;
+  position: relative; overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 24px rgba(66, 133, 244, 0.3);
+  min-height: 160px;
+}
+.primary-card:active { transform: scale(0.985); box-shadow: 0 3px 12px rgba(66, 133, 244, 0.3); }
+.primary-card::after {
+  content: ''; position: absolute;
+  top: -40%; right: -20%; width: 60%; height: 140%;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.22) 0%, transparent 70%);
+  pointer-events: none;
+}
+.primary-card-icon {
+  display: inline-flex; width: 56px; height: 56px;
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.18);
+  align-items: center; justify-content: center;
+  margin-bottom: 10px;
+}
+.primary-card-icon svg { width: 36px; height: 36px; }
+.primary-card-label { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
+.primary-card-sub   { font-size: 14px; color: rgba(255,255,255,0.85); margin-top: 2px; }
+
+.recent-section { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1; }
+.section-header { display: flex; align-items: baseline; justify-content: space-between; }
+
+.recent-list {
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.recent-item {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 14px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  font: inherit; color: var(--text); text-align: left;
+  width: 100%;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: background var(--dur-fast) var(--ease-out-cubic), transform var(--dur-fast) var(--ease-out-cubic);
+  animation: rowFadeIn 0.2s ease-out backwards;
+  box-shadow: var(--shadow-sm);
+}
+.recent-item:active { background: var(--surface-active); transform: scale(0.99); }
+.recent-item:nth-child(1) { animation-delay: 0ms; }
+.recent-item:nth-child(2) { animation-delay: 40ms; }
+.recent-item:nth-child(3) { animation-delay: 80ms; }
+.recent-item:nth-child(4) { animation-delay: 120ms; }
+.recent-item:nth-child(5) { animation-delay: 160ms; }
+@keyframes rowFadeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.recent-item-icon {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--accent-grad);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 600; color: #fff;
+  flex-shrink: 0;
+}
+.recent-item-name {
+  flex: 1; font-size: 16px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.recent-item-chev { color: var(--text-faint); flex-shrink: 0; }
+.recent-item-chev svg { width: 20px; height: 20px; }
+
+.recent-empty {
+  padding: 28px 18px; text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+}
+
+/* ────────────────────────────────────────
+   Skeleton loaders (pulsing placeholder rows)
+   ──────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,255,255,0.06) 100%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--border);
+}
+.skeleton-row {
+  height: 72px;
+}
+@keyframes skeletonShimmer {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 100% 0; }
+}
+
+/* ────────────────────────────────────────
+   Customer screen — inline "use as new" CTA + bigger recent rows
+   ──────────────────────────────────────── */
+.search-wrap {
+  flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+/* When on the customer screen, recent items get more breathing room than
+   on the home screen — they're the primary content here, not a sidebar. */
+[data-screen="customer"] .recent-list { gap: 10px; }
+[data-screen="customer"] .recent-item {
+  padding: 20px 18px;
+  gap: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-strong);
+}
+[data-screen="customer"] .recent-item-icon {
+  width: 48px; height: 48px;
+  font-size: 18px;
+}
+[data-screen="customer"] .recent-item-name {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+[data-screen="customer"] .recent-item-chev svg { width: 22px; height: 22px; }
+
+[data-screen="customer"] .skeleton-row { height: 88px; }
+
+.inline-new-cta {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--primary-grad);
+  color: #fff;
+  border: 0.5px solid rgba(255,255,255,0.18);
+  border-radius: var(--radius-lg);
+  padding: 18px 18px;
+  font: inherit; font-weight: 600; font-size: 16px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  text-align: left; width: 100%;
+  box-shadow: 0 4px 14px var(--primary-glow);
+  animation: ctaSlideIn 0.18s ease-out;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+.inline-new-cta:active { transform: scale(0.985); box-shadow: 0 2px 8px var(--primary-glow); }
+.inline-new-cta-plus {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; line-height: 1;
+  flex-shrink: 0;
+}
+.inline-new-cta-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inline-new-cta-chev { display: inline-flex; opacity: 0.7; }
+.inline-new-cta-chev svg { width: 20px; height: 20px; }
+
+@keyframes ctaSlideIn {
+  from { opacity: 0; transform: translateY(-6px); max-height: 0; padding-top: 0; padding-bottom: 0; }
+  to   { opacity: 1; transform: translateY(0); max-height: 60px; }
+}
+
+/* ────────────────────────────────────────
+   Camera screen — full-bleed viewfinder + chrome overlays
+   ──────────────────────────────────────── */
+
+/* The camera screen breaks the normal screen padding because the viewfinder
+   is full-bleed. We override main padding when camera is active. */
+main:has([data-screen="camera"]:not([hidden])) {
+  padding: 0;
+}
+
+.camera-stage {
+  position: relative;
+  flex: 1;
+  background: #000;
+  /* No border-radius — full bleed black to the screen edge. iPhone's
+     own screen corner radius provides natural rounded corners. */
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Pull the stage DOWN into the safe-area-inset-bottom zone.
+     iOS PWA standalone mode clips flex children at the visible
+     viewport boundary even with viewport-fit=cover, so the only
+     reliable way to extend background under the home indicator
+     is a negative margin equal to the safe area inset. Camera-bottom
+     internally already pads for the safe area so the shutter
+     stays clear of the home indicator. */
+  margin-bottom: calc(env(safe-area-inset-bottom, 0px) * -1);
+}
+
+.camera-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+  /* iOS stutter fix v2: force the element into its final layout dimensions
+     immediately by using min-width/min-height on the intrinsic size, and
+     keep object-fit: cover so any frame size renders correctly. The element
+     is invisible until .ready fires, so a black stage covers the intrinsic
+     0x0 phase entirely. */
+  min-width: 100%;
+  min-height: 100%;
+  display: block;
+  opacity: 0;
+  transform: scale(1);
+  transition: opacity 0.32s var(--ease-out-cubic, ease);
+  will-change: opacity;
+}
+.camera-video.ready {
+  opacity: 1;
+}
+
+/* Flash overlay — pulses white briefly on capture for tactile feedback */
+.camera-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 50;
+  transition: opacity 0.18s ease;
+}
+.camera-flash.firing {
+  opacity: 0.85;
+  transition: opacity 0.08s ease;
+}
+
+/* Top chrome — sits above the viewfinder */
+.camera-top {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  /* The camera screen is full-bleed (main strips its padding when this
+     screen is active), so the safe-area-inset-top must be applied right
+     here or the X cancel + customer chip would sit under the iOS notch. */
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 0;
+}
+.camera-chrome-btn {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.camera-customer-chip {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 99px;
+  padding: 9px 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
+  margin: 0 auto;
+}
+.camera-customer-chip:empty { display: none; }
+
+/* Bigger Done button — bottom-right of the camera, easy thumb reach */
+.camera-done-btn {
+  background: var(--primary-grad);
+  color: #fff;
+  border: 0.5px solid rgba(255,255,255,0.2);
+  font: inherit; font-weight: 700; font-size: 16px;
+  padding: 14px 22px;
+  border-radius: 99px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 6px 18px var(--primary-glow);
+  transition: transform 0.1s ease, opacity 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  justify-self: end;
+  grid-column: 3;
+  min-width: 88px;
+  letter-spacing: -0.1px;
+}
+.camera-done-btn:active { transform: scale(0.95); box-shadow: 0 3px 10px var(--primary-glow); }
+.camera-done-btn:disabled {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: rgba(255,255,255,0.15);
+  box-shadow: none;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Top-right spacer that replaces the old Done button slot.
+   Matches the .icon-button (back button) width so the customer chip
+   stays centered between them. */
+.camera-top-spacer {
+  display: inline-block;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+/* Bottom chrome — shutter row.
+   3 columns of equal width so the shutter stays dead-center regardless
+   of whether the thumb peek is visible. Left + right columns are 76px
+   wide (same as shutter) so the layout is perfectly symmetric. */
+.camera-bottom {
+  position: relative;
+  z-index: 10;
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: 76px 1fr 76px;
+  align-items: center;
+  padding: 14px 18px 26px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  gap: 12px;
+}
+
+.camera-thumb-peek {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+  justify-self: start;
+  /* Pin to column 1 so the grid layout is unambiguous. */
+  grid-column: 1;
+  /* Pop-in animation when first capture lands. */
+  animation: thumbPeekPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes thumbPeekPop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.camera-thumb-peek:active { transform: scale(0.93); }
+.camera-thumb-peek img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.camera-thumb-peek-count {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 14px 4px 4px;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  /* No border, no separate badge — the count sits inside the thumb as
+     an overlay, iOS Camera style. */
+}
+
+/* The classic ring + core shutter */
+.camera-shutter {
+  width: 76px;
+  height: 76px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Pin to column 2 of the 3-column grid so it stays centered even when
+     the thumb-peek (col 1) is display:none. Without this, CSS grid
+     auto-flow lets the shutter shift into the empty column. */
+  grid-column: 2;
+}
+.camera-shutter-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.camera-shutter-core {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.camera-shutter:active .camera-shutter-core {
+  transform: scale(0.86);
+  background: rgba(255, 255, 255, 0.85);
+}
+.camera-shutter:disabled .camera-shutter-core { background: rgba(255,255,255,0.45); }
+.camera-shutter:disabled { cursor: not-allowed; }
+
+
+/* Permission denied / no camera fallback overlay */
+.camera-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(13, 38, 84, 0.97);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 28px;
+  gap: 10px;
+}
+.camera-fallback-icon { font-size: 56px; opacity: 0.55; }
+.camera-fallback h2 {
+  font-size: 20px; font-weight: 600;
+  text-transform: none; letter-spacing: 0;
+  color: var(--text);
+}
+.camera-fallback p { margin: 0 0 8px 0; font-size: 14px; max-width: 320px; }
+.camera-fallback-picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  padding: 14px 24px;
+  cursor: pointer;
+}
+
+/* ────────────────────────────────────────
+   Review
+   ──────────────────────────────────────── */
+.review-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1; align-content: start; padding-bottom: 0.5rem;
+}
+.review-thumb {
+  position: relative; aspect-ratio: 3 / 4;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  animation: thumbPop 0.22s ease-out backwards;
+}
+@keyframes thumbPop {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.review-thumb:nth-child(1) { animation-delay: 0ms; }
+.review-thumb:nth-child(2) { animation-delay: 40ms; }
+.review-thumb:nth-child(3) { animation-delay: 80ms; }
+.review-thumb:nth-child(4) { animation-delay: 120ms; }
+.review-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.review-thumb-placeholder { font-size: 28px; opacity: 0.45; }
+.review-thumb-index {
+  position: absolute; top: 6px; left: 6px;
+  background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 7px; border-radius: 10px;
+}
+.review-thumb-delete {
+  position: absolute; top: 6px; right: 6px;
+  background: rgba(0,0,0,0.6); border: none; color: #fff;
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
+  transition: background 0.15s ease;
+}
+.review-thumb-delete:active { background: var(--primary); }
+
+/* ────────────────────────────────────────
+   Upload — stacked card deck
+   One active card on top, queue peeks behind. As cards complete they
+   fly off and the stack visibly shrinks. Active card carries a
+   "2 of 5" count badge so progress is legible without extra UI chrome.
+   ──────────────────────────────────────── */
+
+.card-deck-stage {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  /* Generous padding so the back-stack cards have room to peek */
+  padding: 8px 8px 24px;
+  perspective: 1000px;
+}
+
+.deck-card {
+  position: absolute;
+  width: min(78%, 320px);
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-xl);
+  background: var(--surface-strong);
+  border: 0.5px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.5s cubic-bezier(0.32, 0.72, 0.0, 1),
+    opacity 0.5s ease,
+    filter 0.4s ease,
+    box-shadow 0.4s ease;
+  transform-origin: center 70%;
+  will-change: transform, opacity;
+}
+
+.deck-card img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Stack positions (data-pos attribute) ────────
+   pos=0 = active (front, full size, sharp)
+   pos=1 = behind by one (slightly smaller, dimmed)
+   pos=2 = behind by two (smaller still, more dimmed)
+   pos=3+ = hidden (behind the stack) */
+.deck-card[data-pos="0"] {
+  transform: translate(-50%, -50%) translateY(0) scale(1);
+  opacity: 1;
+  z-index: 30;
+  filter: none;
+}
+.deck-card[data-pos="1"] {
+  transform: translate(-50%, -50%) translateY(14px) scale(0.94);
+  opacity: 0.65;
+  z-index: 20;
+  filter: saturate(0.8) brightness(0.9);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.deck-card[data-pos="2"] {
+  transform: translate(-50%, -50%) translateY(28px) scale(0.88);
+  opacity: 0.35;
+  z-index: 10;
+  filter: saturate(0.6) brightness(0.78);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+.deck-card[data-pos="3"], .deck-card[data-hidden] {
+  transform: translate(-50%, -50%) translateY(42px) scale(0.82);
+  opacity: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.deck-card { left: 50%; top: 50%; }
+
+/* ── Completed card flies off to the left ─────── */
+.deck-card.flying-off {
+  transform: translate(-50%, -50%) translateX(-120vw) scale(0.92) rotate(-8deg);
+  opacity: 0;
+  z-index: 40;
+  transition:
+    transform 0.55s cubic-bezier(0.5, 0.0, 0.75, 0.0),
+    opacity 0.4s ease 0.1s;
+}
+
+/* ── Status overlay (only meaningful on the active card) ─── */
+.deck-card-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0.15) 35%,
+    rgba(0, 0, 0, 0.20) 65%,
+    rgba(0, 0, 0, 0.65) 100%
+  );
+}
+
+.deck-card-top-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 8px;
+}
+
+/* "2 of 5" badge — top-left of the active card */
+.deck-card-count {
+  display: inline-flex; align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 0.5px solid rgba(255,255,255,0.18);
+}
+
+/* Status icon — top-right corner of the active card */
+.deck-card-status-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  border: 0.5px solid rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(66, 133, 244, 0.45);
+  transition: background 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.deck-card.pending .deck-card-status-icon {
+  background: rgba(255,255,255,0.15);
+  box-shadow: none;
+}
+.deck-card.success .deck-card-status-icon {
+  background: var(--success);
+  color: #06381f;
+  box-shadow: 0 4px 14px rgba(52, 211, 153, 0.5);
+  animation: checkPopBig 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.deck-card.failed .deck-card-status-icon {
+  background: var(--danger);
+  color: #3a0e0e;
+  box-shadow: 0 4px 14px rgba(248, 113, 113, 0.45);
+}
+
+.deck-card-spinner {
+  width: 18px; height: 18px;
+  border: 2.5px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes checkPopBig {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Filename at the bottom of the active card */
+.deck-card-filename {
+  color: rgba(255,255,255,0.95);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+}
+
+/* Behind-the-stack cards: dim their overlays so they don't visually compete */
+.deck-card:not([data-pos="0"]) .deck-card-overlay {
+  background: rgba(0, 0, 0, 0.25);
+}
+.deck-card:not([data-pos="0"]) .deck-card-count,
+.deck-card:not([data-pos="0"]) .deck-card-filename {
+  opacity: 0;
+}
+.deck-card:not([data-pos="0"]) .deck-card-status-icon {
+  opacity: 0.4;
+}
+
+/* Activity hint on the active spinner card — subtle outer glow that pulses */
+.deck-card.active[data-pos="0"] {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(66, 133, 244, 0.5),
+    0 0 36px rgba(66, 133, 244, 0.25);
+  animation: deckActivePulse 2.2s ease-in-out infinite;
+}
+@keyframes deckActivePulse {
+  0%, 100% {
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(66, 133, 244, 0.5),
+      0 0 36px rgba(66, 133, 244, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(66, 133, 244, 0.7),
+      0 0 52px rgba(66, 133, 244, 0.45);
+  }
+}
+
+/* ────────────────────────────────────────
+   Done
+   ──────────────────────────────────────── */
+.done-wrap {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; flex: 1; text-align: center;
+}
+.done-check {
+  width: 108px; height: 108px; border-radius: 50%;
+  background: var(--success);
+  display: flex; align-items: center; justify-content: center;
+  color: #06381f; margin-bottom: 12px;
+  box-shadow: 0 8px 32px rgba(52, 211, 153, 0.4);
+  animation: doneCheckPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.done-check svg { width: 64px; height: 64px; }
+@keyframes doneCheckPop {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.done-actions {
+  display: flex; flex-direction: column; gap: 8px;
+  width: 100%; margin-top: 16px;
+}
+
+/* ────────────────────────────────────────
+   Version footer (visible on home screen)
+   ──────────────────────────────────────── */
+.version-footer {
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-ghost);
+  padding: 4px 0 0;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+/* ────────────────────────────────────────
+   Home screen meta footer (Switch user, etc.)
+   Sits above the version label as proper UI rather than scaffolding.
+   ──────────────────────────────────────── */
+.home-meta-footer {
+  padding: 0.5rem 0 0;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.meta-action {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.meta-action:active {
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* ────────────────────────────────────────
+   Swipe-to-reveal actions (iOS Mail style)
+   ──────────────────────────────────────── */
+
+.swipe-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  /* Same border-radius as a .recent-item so the wrap doesn't introduce
+     visible corners around the row. Customer screen rows use radius-lg
+     so we override per-context below. */
+}
+[data-screen="customer"] .swipe-wrap { border-radius: var(--radius-lg); }
+/* Timeline rows on the home screen use radius-lg on the card, so the
+   swipe-wrap needs to match — otherwise the wraps overflow:hidden clips
+   at 10px while the card draws at 14px, leaving 4px corner gaps that
+   expose the swipe-foreground's solid navy background at all four corners. */
+[data-screen="home"] .timeline .swipe-wrap { border-radius: var(--radius-lg); }
+
+/* Action layer sits BEHIND the row, revealed when the row slides left. */
+.swipe-actions {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  pointer-events: none; /* enabled when the row is open */
+  z-index: 1;
+}
+.swipe-wrap.swipe-open .swipe-actions {
+  pointer-events: auto;
+}
+
+.swipe-action {
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  padding: 0 22px;
+  min-width: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  color: #fff;
+}
+.swipe-action.destructive {
+  background: var(--primary-grad);
+}
+.swipe-action.destructive:active {
+  filter: brightness(0.9);
+}
+.swipe-action.neutral {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* The foreground holds the actual row and slides left to reveal actions */
+.swipe-foreground {
+  position: relative;
+  z-index: 2;
+  /* The foreground needs a SOLID backing layer so the action button
+     behind it doesn't show through. We can't rely on the inner row's
+     background because .recent-item uses rgba (translucent). Painting
+     the foreground itself with the bg-bottom color guarantees a fully
+     opaque layer that covers the action layer when the row is closed. */
+  background: var(--bg-bottom);
+  border-radius: inherit;
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* Ensure the actual row inside doesn't draw its OWN background outside
+   the foreground — it should be clipped to the foreground's radius. */
+.swipe-foreground .recent-item {
+  border-radius: inherit;
+}
+
+/* When inside a swipe-wrap, a recent-item's border-radius is no longer needed
+   on the corners that touch the wrap edges. But since the wrap is overflow:hidden
+   the corners get clipped anyway; leaving the row's radius for when it's not
+   wrapped (skeleton/empty states) is fine. */
+
+/* ────────────────────────────────────────
+   Toast (bottom-of-screen notification w/ optional action)
+   ──────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(20, 30, 50, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px 14px 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 240px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 1000;
+  pointer-events: auto;
+}
+.toast.toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.toast-action {
+  background: transparent;
+  border: none;
+  color: var(--accent-soft);
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 4px 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.toast-action:active { opacity: 0.7; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   HOME SCREEN — V2/V3 hybrid redesign (2026-05-26)
+   Pinned status strip → profile card → tab-pill counters →
+   threaded timeline → red CTA beacon + secondary list button.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* The home section becomes a flex column with a fixed top strip and
+   scrollable body. Override the default screen padding. */
+[data-screen="home"] {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  /* Use dvh so the screen always fills the actual viewport on any iPhone
+     model, including ones with different notch / dynamic-island sizes,
+     and adapts when the browser chrome shows/hides. */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.home-body {
+  flex: 1 1 auto;
+  padding: clamp(14px, 3vh, 22px) 16px calc(env(safe-area-inset-bottom, 0px) + clamp(16px, 3vh, 22px));
+  display: flex;
+  flex-direction: column;
+  /* Cap the body content width on landscape / large screens so it doesn't
+     get unreadably wide. Mobile devices are well under 500px so this is
+     a no-op there; only matters if someone resizes a desktop browser. */
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Status strip ──────────────────────────────────────────────── */
+.status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Real top padding: safe-area-inset + 8px breathing room. Since body
+     no longer adds the safe area, this is the single source of truth. */
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 18px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 0.5px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  flex-shrink: 0;
+}
+.status-strip-left {
+  display: flex; align-items: center; gap: 6px;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  box-shadow: 0 0 8px var(--accent-soft);
+  transition: background var(--dur-normal) var(--ease-out-cubic),
+              box-shadow var(--dur-normal) var(--ease-out-cubic);
+}
+.status-dot.syncing {
+  background: #fbbf24;
+  box-shadow: 0 0 8px #fbbf24;
+  animation: statusPulse 1.2s var(--ease-in-out) infinite;
+}
+.status-dot.offline {
+  background: var(--text-faint);
+  box-shadow: none;
+}
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+.status-label {
+  font-size: 11px;
+  color: rgba(180, 210, 255, 0.95);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.status-strip-right {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color var(--dur-fast) var(--ease-out-cubic),
+              background var(--dur-fast) var(--ease-out-cubic);
+}
+.status-strip-right:active {
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* ── Profile card ──────────────────────────────────────────────── */
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface-strong);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: clamp(16px, 2.4vh, 22px) 18px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  margin-bottom: clamp(12px, 2vh, 18px);
+  box-shadow: var(--shadow-md);
+}
+.profile-card-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--accent-grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(66, 133, 244, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+}
+.profile-card-name-block {
+  flex: 1;
+  min-width: 0;
+}
+.profile-card-name {
+  font-size: 20px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-card-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 2px 0 0;
+  font-weight: 500;
+}
+.profile-card-stat {
+  text-align: right;
+  flex-shrink: 0;
+}
+.profile-card-stat-value {
+  font-size: 32px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.8px;
+  line-height: 1;
+}
+.profile-card-stat-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 3px 0 0;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ── Tab-pill counters ─────────────────────────────────────────── */
+.counter-pills {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--surface);
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  margin-bottom: clamp(14px, 2.4vh, 22px);
+}
+.counter-pill {
+  flex: 1;
+  background: transparent;
+  border: 0.5px solid transparent;
+  border-radius: 12px;
+  padding: 12px 4px;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              border-color var(--dur-fast) var(--ease-out-cubic),
+              box-shadow var(--dur-fast) var(--ease-out-cubic);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.counter-pill-value {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.6px;
+  line-height: 1;
+}
+.counter-pill-label {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.counter-pill-active {
+  background: rgba(90, 158, 255, 0.2);
+  border-color: rgba(90, 158, 255, 0.32);
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.22);
+}
+.counter-pill-active .counter-pill-value {
+  color: var(--text);
+}
+.counter-pill-active .counter-pill-label {
+  color: rgba(180, 210, 255, 0.95);
+}
+.counter-pill:active {
+  transform: scale(0.97);
+}
+
+/* ── Timeline header ───────────────────────────────────────────── */
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.timeline-header-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.timeline-header-meta {
+  font-size: 11px;
+  color: rgba(180, 210, 255, 0.85);
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ── Threaded timeline ─────────────────────────────────────────── */
+.timeline {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: clamp(14px, 2.4vh, 22px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* No flex: 1 grow here. The timeline should only be as tall as its
+     rows + a small buffer for the fading line. Empty space between the
+     timeline and the CTA is intentional and the CTA still floats to
+     the bottom via .home-cta-row margin-top: auto. */
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 12px;
+  /* Stop the line ~14px below the last row's dot rather than at the
+     timeline's bottom edge. The 14px buffer gives the line a soft fade
+     into nothing right after the last entry. */
+  bottom: -4px;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(90, 158, 255, 0.45),
+    rgba(90, 158, 255, 0.2),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.timeline-row {
+  position: relative;
+  /* The card slides up from below with a subtle scale-pop; ios-spring
+     easing gives a natural rubbery settle. The dot inside has its own
+     animation that lands AFTER the card has settled. */
+  animation: timelineRowEnter 0.46s var(--ease-ios-spring) backwards;
+  /* The row is now a flex container that holds the dot OUTSIDE the
+     swipe-wrap (the swipe-wrap only wraps the inner .timeline-row-card).
+     This keeps the dot from being clipped by the swipe-wrap's
+     overflow:hidden when the card is swiped. */
+}
+/* The .swipe-wrap (when the card is wrapped) becomes the child that
+   takes the remaining width after the dot's 18px gutter. */
+.timeline-row > .swipe-wrap,
+.timeline-row > .timeline-row-card {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.timeline-row:nth-child(1) { animation-delay: 0.04s; }
+.timeline-row:nth-child(2) { animation-delay: 0.11s; }
+.timeline-row:nth-child(3) { animation-delay: 0.18s; }
+.timeline-row:nth-child(4) { animation-delay: 0.25s; }
+.timeline-row:nth-child(5) { animation-delay: 0.32s; }
+
+@keyframes timelineRowEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Dot pop — fires after its row card has settled. The dot scales from
+   0 -> 1.4 (overshoot) -> 1 with a soft outer-ring shadow that grows
+   then settles. Visually: card arrives, then the dot lands a beat
+   later with a satisfying pop. */
+.timeline-row .timeline-row-dot {
+  animation: timelineDotPop 0.36s var(--ease-ios-spring) backwards;
+}
+.timeline-row:nth-child(1) .timeline-row-dot { animation-delay: 0.22s; }
+.timeline-row:nth-child(2) .timeline-row-dot { animation-delay: 0.29s; }
+.timeline-row:nth-child(3) .timeline-row-dot { animation-delay: 0.36s; }
+.timeline-row:nth-child(4) .timeline-row-dot { animation-delay: 0.43s; }
+.timeline-row:nth-child(5) .timeline-row-dot { animation-delay: 0.50s; }
+
+@keyframes timelineDotPop {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.timeline-row-dot {
+  position: absolute;
+  left: -16px;
+  top: 14px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(90, 158, 255, 0.2);
+}
+/* Older entries get progressively dimmer dots */
+.timeline-row:nth-child(2) .timeline-row-dot {
+  background: rgba(90, 158, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(90, 158, 255, 0.13);
+}
+.timeline-row:nth-child(3) .timeline-row-dot {
+  background: rgba(90, 158, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(90, 158, 255, 0.08);
+}
+.timeline-row:nth-child(n+4) .timeline-row-dot {
+  background: rgba(90, 158, 255, 0.3);
+  box-shadow: 0 0 0 3px rgba(90, 158, 255, 0.05);
+}
+
+.timeline-row-card {
+  background: var(--surface);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              transform var(--dur-fast) var(--ease-out-cubic);
+}
+.timeline-row-card:active {
+  background: var(--surface-hover);
+  transform: scale(0.985);
+}
+.timeline-row-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--accent-grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+/* Text block: stacks the name and subtitle vertically. flex: 1 lets it
+   take all remaining width after avatar + time, so the subtitle naturally
+   fills the bottom line. */
+.timeline-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.timeline-row-name {
+  font-size: 15px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.15;
+}
+.timeline-row-subtitle {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.15;
+}
+.timeline-row-time {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.timeline-empty {
+  background: var(--surface);
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  padding: 18px 16px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Skeleton row for timeline loading state */
+.skeleton-timeline-row {
+  height: 50px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-lg);
+}
+
+/* ── Split CTA row ─────────────────────────────────────────────── */
+.home-cta-row {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.cta-beacon {
+  flex: 1;
+  background: var(--primary-grad);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-pill);
+  padding: 14px 20px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--shadow-glow-primary);
+  transition: transform var(--dur-fast) var(--ease-out-cubic),
+              box-shadow var(--dur-normal) var(--ease-out-cubic);
+}
+.cta-beacon:active {
+  transform: scale(0.97);
+  box-shadow:
+    0 4px 14px rgba(231, 69, 96, 0.42),
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.cta-secondary {
+  width: 48px;
+  height: 48px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  flex-shrink: 0;
+  transition: transform var(--dur-fast) var(--ease-out-cubic),
+              background var(--dur-fast) var(--ease-out-cubic);
+}
+.cta-secondary:active {
+  transform: scale(0.94);
+  background: var(--surface-hover);
+}
+
+/* ── Done button nudge: subtle pulse after each capture ─────────
+   Triggered from camera.js after a successful photo capture. The
+   pulse is brief and the glow expands without scaling the button
+   itself (which would mess with the bottom-row grid). */
+@keyframes doneButtonNudge {
+  0%   { box-shadow: 0 6px 18px var(--primary-glow); }
+  35%  { box-shadow: 0 8px 28px rgba(231, 69, 96, 0.7), 0 0 0 6px rgba(231, 69, 96, 0.1); }
+  100% { box-shadow: 0 6px 18px var(--primary-glow); }
+}
+.camera-done-btn.nudge {
+  animation: doneButtonNudge 0.6s var(--ease-out-cubic);
+}
+
+/* ── Clear-X button inside the customer search input ──────────── */
+.search-input-wrap {
+  position: relative;
+}
+.search-input-wrap input {
+  padding-right: 40px;  /* leave room for the clear button */
+}
+.search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              opacity var(--dur-fast) var(--ease-out-cubic);
+}
+.search-clear:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SETTINGS SCREEN
+   Section labels + rows + toggles + accent swatches.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-section-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0 0 8px 4px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: background var(--dur-fast) var(--ease-out-cubic);
+}
+.settings-row + .settings-row { margin-top: 2px; }
+.settings-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.settings-row-title {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 500;
+}
+.settings-row-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 2px 0 0;
+}
+.settings-row-button {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+}
+.settings-row-button:active {
+  background: var(--surface-hover);
+}
+.settings-row-chev {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+/* ── Toggle switch ─────────────────────────────────────────────── */
+.settings-row-toggle {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.toggle {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.toggle-track {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 26px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background var(--dur-normal) var(--ease-out-cubic);
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform var(--dur-normal) var(--ease-ios-spring);
+}
+.toggle input:checked + .toggle-track {
+  background: var(--accent);
+}
+.toggle input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(18px);
+}
+
+/* ── Accent color swatches ─────────────────────────────────────── */
+.accent-swatches {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  justify-content: space-between;
+}
+.accent-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex: 1;
+  max-width: 52px;
+  transition: transform var(--dur-fast) var(--ease-out-cubic),
+              border-color var(--dur-fast) var(--ease-out-cubic),
+              box-shadow var(--dur-normal) var(--ease-out-cubic);
+}
+.accent-swatch:active { transform: scale(0.92); }
+.accent-swatch.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2),
+              0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Camera "preparing" overlay ─────────────────────────────────
+   Shown during the brief window when getUserMedia is reacquiring a
+   previously-granted permission (iOS PWA standalone mode re-prompts
+   silently sometimes). Without this, the user sees a black screen
+   for ~300ms and wonders if it's broken. */
+.camera-preparing {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(13, 38, 84, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  animation: fadeIn 0.15s var(--ease-out-cubic);
+}
+.camera-preparing-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--accent-soft);
+  border-radius: 50%;
+  animation: cameraSpin 0.9s linear infinite;
+}
+.camera-preparing-label {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+@keyframes cameraSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+
+/* Suppress iOS text selection / callout menus on the camera screen.
+   The "Sketch" / "Look Up" / "Translate" menus that iOS Safari shows
+   when text is tapped are not relevant here and looked broken in the
+   field — none of the camera UI text is meant to be selected. */
+.camera-stage,
+.camera-stage * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   PASSIVE / AMBIENT ANIMATIONS (added 2026-05-26)
+   Slow, subtle, never distracting. Cycles measured in 5-12 seconds,
+   opacity changes under 0.15, movements under 8px. User should feel
+   the screen is "alive" without consciously noticing the motion.
+
+   All wrapped in prefers-reduced-motion query: respects users who've
+   asked their OS to minimize motion (accessibility default).
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: no-preference) {
+
+  /* ── Background color blooms slowly drift ─────────────────────── */
+  /* The body::before holds the navy gradient. We add a second layer
+     (body::after) with two radial blooms that slowly migrate in a
+     gentle elliptical path. Adds depth without obvious motion. */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100lvh;
+    background:
+      radial-gradient(ellipse 320px 280px at 20% 30%, rgba(90, 158, 255, 0.10), transparent 60%),
+      radial-gradient(ellipse 380px 340px at 80% 85%, rgba(231, 69, 96, 0.07), transparent 65%);
+    z-index: -1;
+    pointer-events: none;
+    animation: ambientBloomDrift 18s ease-in-out infinite alternate;
+    will-change: transform, opacity;
+  }
+  @keyframes ambientBloomDrift {
+    0%   { transform: translate(0, 0)    scale(1);    opacity: 0.85; }
+    50%  { transform: translate(8px, -6px) scale(1.04); opacity: 1; }
+    100% { transform: translate(-6px, 8px) scale(0.98); opacity: 0.9; }
+  }
+
+  /* ── Status dot subtle breathing when synced ──────────────────── */
+  /* When showing the "Synced" state (no .syncing / .offline class),
+     the dot gently breathes its opacity. Faint enough that you only
+     notice it if you stare at it, which is exactly the goal. */
+  .status-dot:not(.syncing):not(.offline) {
+    animation: statusDotBreathe 4s ease-in-out infinite;
+  }
+  @keyframes statusDotBreathe {
+    0%, 100% { opacity: 1;    box-shadow: 0 0 8px var(--accent-soft); }
+    50%      { opacity: 0.65; box-shadow: 0 0 4px var(--accent-soft); }
+  }
+
+  /* ── Timeline thread comet ────────────────────────────────────── */
+  /* A subtle bright spot travels down the threaded line every 7s.
+     Implemented as a gradient on the ::before line that moves via
+     background-position animation. Adds life to a static element
+     without redrawing anything. */
+  .timeline::before {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(90, 158, 255, 0.45) 25%,
+      rgba(255, 255, 255, 0.75) 50%,
+      rgba(90, 158, 255, 0.2) 75%,
+      transparent 100%
+    );
+    background-size: 100% 300%;
+    animation: timelineCometFlow 7s ease-in-out infinite;
+  }
+  @keyframes timelineCometFlow {
+    0%   { background-position: 0% -100%; }
+    100% { background-position: 0% 200%; }
+  }
+
+  /* ── Profile card avatar gradient rotation ────────────────────── */
+  /* Very slow gradient angle shift on the avatar. 12 seconds per
+     cycle, so it's never quite where you remember it being. */
+  .profile-card-avatar {
+    background-size: 200% 200%;
+    animation: avatarGradientShift 12s ease-in-out infinite alternate;
+  }
+  @keyframes avatarGradientShift {
+    0%   { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+  }
+
+  /* ── Red CTA beacon glow pulse ─────────────────────────────────── */
+  /* When at rest (not :active, not :hover), the glow softly breathes
+     so the user notices the button has presence even when their
+     attention is elsewhere. */
+  .cta-beacon:not(:active) {
+    animation: ctaBeaconPulse 5s ease-in-out infinite;
+  }
+  @keyframes ctaBeaconPulse {
+    0%, 100% { box-shadow: 0 8px 24px rgba(231, 69, 96, 0.5),  0 1px 2px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.22); }
+    50%      { box-shadow: 0 10px 32px rgba(231, 69, 96, 0.62), 0 1px 2px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.22); }
+  }
+
+  /* ── Counter pill active state gentle hover ───────────────────── */
+  /* The currently-active counter pill (today) gets a slow subtle
+     highlight pulse so it reads as "this is the selected one"
+     without screaming for attention. */
+  .counter-pill-active {
+    animation: counterPillActivePulse 6s ease-in-out infinite;
+  }
+  @keyframes counterPillActivePulse {
+    0%, 100% { background: rgba(90, 158, 255, 0.20); }
+    50%      { background: rgba(90, 158, 255, 0.26); }
+  }
+
+} /* end @media (prefers-reduced-motion: no-preference) */
+
+/* ═══════════════════════════════════════════════════════════════════
+   QUICK MENU POPOVER — anchored to the kebab button (bottom right)
+   Backdrop dismisses on tap. Panel animates scale+opacity from the
+   button's corner so it feels physically tethered to the source.
+   ═══════════════════════════════════════════════════════════════════ */
+.quick-menu {
+  position: fixed;
+  /* Use lvh which always = full screen including home indicator strip.
+     This is more reliable than the negative-margin trick we used before. */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  z-index: 200;
+  pointer-events: auto;
+}
+.quick-menu[hidden] { display: none; }
+
+.quick-menu-backdrop {
+  position: absolute;
+  /* Match the parent .quick-menu's explicit dimensions for the same
+     iOS-safe-area reason. */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: qmBackdropIn 0.18s var(--ease-out-cubic);
+}
+@keyframes qmBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+
+.quick-menu-panel {
+  position: absolute;
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);
+  min-width: 220px;
+  background: rgba(20, 50, 100, 0.92);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 6px;
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  box-shadow: var(--shadow-lg), 0 16px 48px rgba(0, 0, 0, 0.42);
+  transform-origin: bottom right;
+  animation: qmPanelIn 0.22s var(--ease-ios-spring);
+}
+@keyframes qmPanelIn {
+  from { opacity: 0; transform: scale(0.85) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Closing state: reverse animation. Triggered by .closing class
+   added by quickMenu.js closeMenu(). Element gets hidden after
+   the animation ends (animationend listener). */
+.quick-menu.closing .quick-menu-panel {
+  animation: qmPanelOut 0.18s var(--ease-in-out) forwards;
+}
+.quick-menu.closing .quick-menu-backdrop {
+  animation: qmBackdropOut 0.18s var(--ease-in-out) forwards;
+}
+@keyframes qmPanelOut {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.9) translateY(6px); }
+}
+@keyframes qmBackdropOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.quick-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic);
+}
+.quick-menu-item:active { background: var(--surface-hover); }
+.quick-menu-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--accent-soft);
+  flex-shrink: 0;
+}
+.quick-menu-item-label { flex: 1; font-weight: 500; }
+.quick-menu-divider {
+  height: 0.5px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DASHBOARD SCREEN — week chart + stat row + top customers
+   ═══════════════════════════════════════════════════════════════════ */
+.dashboard-body {
+  display: flex;
+  flex-direction: column;
+  /* Tightened from 16 to 10px so the dashboard reads as denser without
+     feeling cramped. Cards still have their own internal padding. */
+  gap: 10px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+.dashboard-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  /* Was 14px on all sides — now 12px vertical, 14px horizontal so vertical
+     stacking feels lighter while the side margins stay roomy. */
+  padding: 12px 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-md);
+}
+.dashboard-card-header {
+  /* Was 14px — pulled down to 10px so the header sits closer to its content. */
+  margin-bottom: 10px !important;
+}
+
+/* ── Collapsible cards (team-bars, team-recent-list, team-inactive-list)
+   Default state: collapsed. Header shows a count + chevron; tapping
+   reveals the body. State managed by .dashboard-card--collapsed class
+   on the wrapper. */
+.dashboard-card--collapsible .dashboard-card-header {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  margin-bottom: 0 !important;
+  align-items: center;
+}
+.dashboard-card--collapsible .dashboard-card-header .chev {
+  display: inline-block;
+  font-size: 14px;
+  color: var(--text-dim);
+  transition: transform var(--dur-normal) var(--ease-out-cubic);
+  margin-left: 8px;
+}
+.dashboard-card--collapsed .chev {
+  transform: rotate(-90deg);
+}
+.dashboard-card--collapsible .collapse-body {
+  max-height: 1000px;
+  overflow: hidden;
+  transition: max-height 0.32s var(--ease-out-cubic),
+              margin-top 0.18s var(--ease-out-cubic),
+              opacity 0.18s var(--ease-out-cubic);
+  margin-top: 10px;
+}
+.dashboard-card--collapsed .collapse-body {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+}
+.dashboard-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.dashboard-card-title {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+}
+.dashboard-card-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ── Week chart: 7 vertical bars ─────────────────────────────── */
+.week-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  height: 96px;
+  padding: 0 2px;
+}
+.week-chart-bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+  border-radius: 6px 6px 2px 2px;
+  min-height: 4px;
+  position: relative;
+  transition: height var(--dur-slow) var(--ease-out-cubic);
+}
+.week-chart-bar.today {
+  background: linear-gradient(180deg, #fff, var(--accent-soft));
+  box-shadow: 0 0 12px rgba(90, 158, 255, 0.35);
+}
+.week-chart-bar-value {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.week-chart-bar.today .week-chart-bar-value { color: var(--text); }
+.week-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 2px 0;
+}
+.week-chart-label {
+  flex: 1;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.week-chart-label.today { color: var(--accent-soft); }
+
+/* ── Stat row: 3 numbers across ──────────────────────────────── */
+.dashboard-stat-row {
+  display: flex;
+  gap: 6px;
+}
+.dashboard-stat {
+  flex: 1;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px 8px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.dashboard-stat-value {
+  font-size: 22px;
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+}
+.dashboard-stat-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 2px 0 0;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* ── Top customers list ──────────────────────────────────────── */
+.dashboard-top-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dashboard-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+}
+.dashboard-top-rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.dashboard-top-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dashboard-top-count {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.dashboard-empty {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 16px 8px;
+  margin: 0;
+}
+
+
+/* Loading spinner — replaces the "—" placeholder during initial data fetch.
+   Compact, centered, accent-colored. Disappears once paintCounters runs. */
+.loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--accent-soft);
+  border-radius: 50%;
+  animation: loadSpinnerRot 0.85s linear infinite;
+  vertical-align: middle;
+}
+.loading-spinner.lg {
+  width: 24px;
+  height: 24px;
+  border-width: 2.5px;
+}
+@keyframes loadSpinnerRot {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Offline / queued visual state ───────────────────────────────
+   Subtle visual differentiation when a scan was queued (vs uploaded
+   live). The done screen check icon goes amber for queued, and the
+   text says "Saved offline" instead of "All set". */
+.done-check.done-check-queued {
+  /* Brighter amber + stronger glow so this state reads clearly different
+     from the green-success state at a glance. Also a soft outline to
+     anchor the icon on dark navy. */
+  color: #fcd34d;
+  filter: drop-shadow(0 0 16px rgba(252, 211, 77, 0.55))
+          drop-shadow(0 0 4px rgba(252, 211, 77, 0.4));
+}
+
+/* Settings health-section drain button — appears next to the queue
+   status row when items are pending AND device is online. Lets the
+   user manually trigger a sync drain without waiting for the next
+   auto-attempt. */
+.settings-row-chev-btn {
+  background: rgba(90, 158, 255, 0.14);
+  border: 0.5px solid rgba(90, 158, 255, 0.32);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              transform var(--dur-fast) var(--ease-out-cubic);
+}
+.settings-row-chev-btn:active {
+  transform: scale(0.96);
+  background: rgba(90, 158, 255, 0.22);
+}
+.settings-row-chev-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* Pending badge — appears next to customer names in the picker when
+   the customer has a scan currently in the offline queue (waiting for
+   sync). Visual: small amber pill that says "pending". */
+.pending-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  background: rgba(251, 191, 36, 0.18);
+  color: #fbbf24;
+  border: 0.5px solid rgba(251, 191, 36, 0.32);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DEV PANEL — user management + system diagnostics
+   Hidden from non-dev users by the JS wiring it up.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.dev-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+.dev-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 0.5px solid rgba(251, 191, 36, 0.32);
+  color: #fcd34d;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dev-section { display: flex; flex-direction: column; gap: 6px; }
+.dev-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 4px 4px;
+}
+.dev-section-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.dev-section-action {
+  background: rgba(90, 158, 255, 0.14);
+  border: 0.5px solid rgba(90, 158, 255, 0.32);
+  border-radius: var(--radius-pill);
+  color: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dev-section-action:active { transform: scale(0.95); }
+
+/* User list rows */
+.dev-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dev-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+.dev-user-row:active { background: var(--surface-hover); }
+.dev-user-row.dev-user-row-inactive { opacity: 0.55; }
+
+.dev-user-row-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--accent-grad);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dev-user-row-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.dev-user-row-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--text);
+}
+.dev-user-row-email {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 1px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dev-user-row-role {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+.dev-user-row-role-dev {
+  background: rgba(231, 69, 96, 0.18);
+  color: #fda4af;
+  border: 0.5px solid rgba(231, 69, 96, 0.32);
+}
+.dev-user-row-role-manager {
+  background: rgba(167, 139, 250, 0.18);
+  color: #c4b5fd;
+  border: 0.5px solid rgba(167, 139, 250, 0.32);
+}
+.dev-user-row-role-sales {
+  background: rgba(94, 234, 212, 0.14);
+  color: #6ee7b7;
+  border: 0.5px solid rgba(94, 234, 212, 0.28);
+}
+.dev-user-row-inactive-tag {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
+/* Roles list */
+.dev-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dev-role-row {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.dev-role-row-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+.dev-role-row-perms {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", monospace;
+  word-break: break-word;
+}
+
+/* Wide action button */
+.dev-button-wide {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 12px;
+  width: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dev-button-wide:active { background: var(--surface-hover); }
+
+/* ── User add/edit modal ────────────────────────────── */
+.dev-user-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  z-index: 300;
+}
+.dev-user-modal[hidden] { display: none; }
+.dev-user-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: qmBackdropIn 0.18s var(--ease-out-cubic);
+}
+.dev-user-modal-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 32px);
+  max-width: 420px;
+  background: rgba(20, 50, 100, 0.95);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  box-shadow: var(--shadow-lg), 0 16px 48px rgba(0, 0, 0, 0.5);
+  animation: devModalIn 0.22s var(--ease-ios-spring);
+}
+@keyframes devModalIn {
+  from { opacity: 0; transform: translate(-50%, -45%) scale(0.92); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.dev-user-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border);
+}
+.dev-user-modal-header h2 {
+  font-size: 16px;
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+.dev-user-modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dev-user-modal-footer {
+  padding: 14px 16px;
+  display: flex;
+  gap: 8px;
+  border-top: 0.5px solid var(--border);
+}
+.dev-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.dev-field-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.dev-field input[type="text"],
+.dev-field input[type="email"],
+.dev-field select {
+  font: inherit;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+.dev-field-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dev-field-checkbox input[type="checkbox"] {
+  width: 18px; height: 18px;
+}
+.dev-button-primary,
+.dev-button-secondary,
+.dev-button-danger {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex: 1;
+}
+.dev-button-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.dev-button-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border: 0.5px solid var(--border);
+}
+.dev-button-danger {
+  background: rgba(231, 69, 96, 0.18);
+  color: #fda4af;
+  border: 0.5px solid rgba(231, 69, 96, 0.4);
+}
+.dev-button-primary:active { transform: scale(0.97); }
+.dev-button-secondary:active { transform: scale(0.97); }
+.dev-button-danger:active { transform: scale(0.97); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   TEAM SECTION (manager / dev role)
+   Visible on dashboard when user has viewAllData permission.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Per-salesperson bars — each row: name + horizontal bar + count */
+.team-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 4px 4px;
+}
+.team-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.team-bar-name {
+  flex: 0 0 70px;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.team-bar-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.team-bar-fill {
+  height: 100%;
+  background: var(--accent-grad);
+  border-radius: var(--radius-pill);
+  transition: width 600ms var(--ease-out-cubic);
+}
+.team-bar-count {
+  flex: 0 0 28px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Recent scans list — like the home timeline but with salesperson avatar */
+.team-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+.team-recent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-radius: var(--radius-md);
+}
+.team-recent-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent-grad);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.team-recent-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.team-recent-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.team-recent-sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin: 1px 0 0;
+}
+.team-recent-time {
+  font-size: 10px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+/* Inactive salespeople list — compact rows showing who hasn't scanned */
+.team-inactive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+.team-inactive-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  opacity: 0.7;
+}
+.team-inactive-name {
+  flex: 1;
+  font-size: 13px;
+  margin: 0;
+  color: var(--text);
+}
+.team-inactive-role {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Customer search input + results */
+.team-search-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+}
+.team-search-input {
+  font: inherit;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+.team-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.12);
+}
+.team-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 24px;
+}
+.team-search-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 4px;
+  border-radius: var(--radius-md);
+}
+
+/* ─── Team search pill (Dashboard top-of-team-section) ──────────
+   Thin rounded search bar sitting above the team data. Looks like
+   the iOS Spotlight bar — inline magnifying glass icon, no card
+   wrapper, full-width with subtle bg. */
+.team-search-pill-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  /* Thinner pill — was 8x14, now 5x12. Less intrusive, more like a
+     search hint than a primary action. Font also dropped 14 -> 13. */
+  padding: 5px 12px;
+  margin-top: -2px;
+  margin-bottom: 4px;
+  transition: border-color var(--dur-fast) var(--ease-out-cubic),
+              background var(--dur-fast) var(--ease-out-cubic);
+}
+.team-search-pill-wrapper:focus-within {
+  border-color: var(--accent-soft);
+  background: rgba(255, 255, 255, 0.09);
+}
+.team-search-pill-icon {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.team-search-pill-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 0;
+  outline: none;
+  min-width: 0;
+}
+.team-search-pill-input::placeholder {
+  color: var(--text-dim);
+}
+/* Floating results card (only renders when there's something to show) */
+.team-search-results-floating {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 8px 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin-top: -2px;
+  margin-bottom: 4px;
+}
+.team-search-results-floating[hidden] { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ANNOUNCEMENTS — banner on home + compose modal
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Banner that appears at the top of home when there's a fresh
+      announcement targeted at the current user. ── */
+.announcement-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg,
+    rgba(94, 158, 255, 0.18),
+    rgba(94, 158, 255, 0.10));
+  border: 0.5px solid rgba(94, 158, 255, 0.42);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  margin: 10px 0 -2px;
+  /* Subtle entrance and exit animations driven by JS adding/removing
+     .announcement-banner--entering and .announcement-banner--leaving. */
+  animation: announcementIn 0.4s var(--ease-ios-spring);
+  position: relative;
+}
+.announcement-banner[hidden] { display: none; }
+.announcement-banner--leaving {
+  animation: announcementOut 0.32s var(--ease-out-cubic) forwards;
+}
+@keyframes announcementIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes announcementOut {
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+.announcement-banner-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(94, 158, 255, 0.22);
+  color: var(--accent-soft);
+  flex-shrink: 0;
+}
+.announcement-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+.announcement-banner-from {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  margin: 0 0 1px;
+}
+.announcement-banner-text {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.35;
+  /* Truncate long announcements at 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.announcement-banner-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.announcement-banner-close:active { transform: scale(0.9); }
+
+/* ── Compose modal (manager + dev only) ── */
+.ann-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  z-index: 300;
+}
+.ann-modal[hidden] { display: none; }
+.ann-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: qmBackdropIn 0.18s var(--ease-out-cubic);
+}
+.ann-modal-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 32px);
+  max-width: 440px;
+  background: rgba(20, 50, 100, 0.95);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  box-shadow: var(--shadow-lg), 0 16px 48px rgba(0, 0, 0, 0.5);
+  animation: devModalIn 0.22s var(--ease-ios-spring);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.ann-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border);
+}
+.ann-modal-header h2 {
+  font-size: 16px;
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+.ann-modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+.ann-modal-footer {
+  padding: 14px 16px;
+  display: flex;
+  gap: 8px;
+  border-top: 0.5px solid var(--border);
+}
+
+.ann-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.ann-field-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.ann-field textarea,
+.ann-field select {
+  font: inherit;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  width: 100%;
+  resize: vertical;
+}
+.ann-field textarea {
+  min-height: 70px;
+  line-height: 1.45;
+}
+.ann-char-count {
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+/* Audience pill toggle */
+.ann-audience-toggle {
+  display: flex;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+}
+.ann-audience-toggle button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              color var(--dur-fast) var(--ease-out-cubic);
+}
+.ann-audience-toggle button.active {
+  background: rgba(90, 158, 255, 0.22);
+  color: var(--text);
+}
+
+/* User multi-select list */
+.ann-users-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px;
+}
+.ann-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ann-user-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.ann-user-row-name {
+  font-size: 13px;
+  color: var(--text);
+}
+.ann-user-row-role {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.ann-user-row.checked {
+  background: rgba(90, 158, 255, 0.12);
+}
+
+/* ─── Team section layout (Dashboard) ─────────────────────────────
+   Proper rhythm: tight label → thin search → small gap → stat row →
+   gap → collapsed cards. Each card sits flush with consistent spacing
+   instead of the visually-noisy mix we had. */
+.dashboard-team-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.dashboard-team-label {
+  margin: 0 4px 0 !important;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+}
+
+/* Override the prior pill styles for the team search — now even thinner. */
+.dashboard-team-section .team-search-pill-wrapper {
+  /* Significantly shorter — was 5x12, now 4x10. Reads as a hint not
+     a primary action. Sits flush directly under the Team label. */
+  padding: 4px 10px;
+  gap: 6px;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.035);
+}
+.dashboard-team-section .team-search-pill-input {
+  font-size: 12px;
+  /* Slightly muted text so the bar feels lighter on the page */
+  color: var(--text);
+}
+.dashboard-team-section .team-search-pill-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 12px;
+}
+.dashboard-team-section .team-search-pill-icon {
+  opacity: 0.55;
+}
+
+/* Stat row tighter inside team section */
+.dashboard-team-section .dashboard-stat-row {
+  margin: 2px 0;
+}
+.dashboard-team-section .dashboard-stat {
+  padding: 8px 6px;
+}
+.dashboard-team-section .dashboard-stat-value {
+  font-size: 20px;
+}
+.dashboard-team-section .dashboard-stat-label {
+  font-size: 9px;
+  letter-spacing: 0.4px;
+}
+
+/* Collapsed cards: tighter vertical padding, smaller chevron, cleaner
+   rhythm. Headers also pack tighter when there's no body shown. */
+.dashboard-team-section .dashboard-card--collapsible {
+  padding: 10px 12px;
+}
+.dashboard-team-section .dashboard-card--collapsible .dashboard-card-title {
+  font-size: 13px;
+}
+.dashboard-team-section .dashboard-card--collapsible .dashboard-card-meta {
+  font-size: 10px;
+  margin-top: 1px;
+}
+.dashboard-team-section .dashboard-card--collapsible .chev {
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SIGN-IN with Google (GIS) — added with Sign-In rollout
+   ═══════════════════════════════════════════════════════════════════ */
+
+.gis-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 40px;
+  padding: 0 24px;
+}
+
+/* GIS renders an iframe inside this — we just make sure the wrapper
+   is the right width so it doesn't get squished on small screens. */
+.gis-button-container {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
+.signin-error {
+  color: #fda4af;
+  font-size: 13px;
+  text-align: center;
+  background: rgba(231, 69, 96, 0.1);
+  border: 0.5px solid rgba(231, 69, 96, 0.3);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin: 0;
+  max-width: 320px;
+}
+
+#signin-status {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ─── Remember me / Face ID consent on sign-in screen ──────────── */
+.remember-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  margin-top: 4px;
+  max-width: 320px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast) var(--ease-out-cubic),
+              border-color var(--dur-fast) var(--ease-out-cubic);
+}
+.remember-row:active {
+  background: rgba(255, 255, 255, 0.07);
+}
+.remember-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  accent-color: var(--accent-soft);
+}
+.remember-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.remember-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.remember-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.3;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LOCK SCREEN — Face ID / Biometric unlock on boot
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ds-lock-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-bottom);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: dsLockIn 0.3s var(--ease-out-cubic);
+}
+
+@keyframes dsLockIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ds-lock-screen--exiting {
+  animation: dsLockOut 0.25s var(--ease-out-cubic) forwards;
+}
+
+@keyframes dsLockOut {
+  to { opacity: 0; transform: scale(1.02); }
+}
+
+.ds-lock-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  max-width: 360px;
+  text-align: center;
+}
+
+.ds-lock-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #5a9eff, #3b82f6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(90, 158, 255, 0.35);
+  margin-bottom: 8px;
+}
+
+.ds-lock-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.ds-lock-sub {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+
+.ds-lock-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent-soft);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 14px 32px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 8px 24px rgba(90, 158, 255, 0.35);
+  transition: transform 0.15s var(--ease-out-cubic);
+}
+.ds-lock-button:active { transform: scale(0.96); }
+
+.ds-lock-signout {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  margin-top: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+.ds-lock-signout:active { opacity: 0.6; }
+
+
+/* ────────── Dev panel: tabs + advanced sections (2026-05-30) ────────── */
+.dev-tabs {
+  display: flex;
+  gap: 2px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 3px;
+  margin: 0 0 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.dev-tabs::-webkit-scrollbar { display: none; }
+.dev-tab {
+  flex: 1 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.dev-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+.dev-tab-panel { animation: devFade 0.18s ease both; display: flex; flex-direction: column; gap: 28px; }
+@keyframes devFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Drive browser */
+.dev-drive-list { display: flex; flex-direction: column; gap: 6px; }
+.dev-drive-row {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; box-sizing: border-box;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 11px; padding: 11px 13px;
+  color: var(--text); text-align: left; cursor: pointer;
+  font: inherit;
+}
+.dev-drive-row:active { background: rgba(255,255,255,0.09); }
+.dev-drive-row-icon { flex-shrink: 0; opacity: 0.7; display: flex; }
+.dev-drive-row-info { flex: 1; min-width: 0; }
+.dev-drive-row-name {
+  font-size: 14px; font-weight: 600; margin: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dev-drive-row-meta { font-size: 11.5px; color: var(--text-dim); margin: 2px 0 0; }
+.dev-drive-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.dev-chip {
+  border: none; border-radius: 8px; font: inherit; font-size: 11px; font-weight: 700;
+  padding: 5px 9px; cursor: pointer; color: #fff;
+}
+.dev-chip-archive { background: rgba(66,133,244,0.25); color: var(--accent-soft); }
+.dev-chip-trash   { background: rgba(231,76,60,0.22); color: #f7a39a; }
+
+/* File preview modal */
+.dev-preview-modal { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: flex-end; }
+.dev-preview-backdrop { position: absolute; inset: 0; background: rgba(8,20,44,0.7); }
+.dev-preview-panel {
+  position: relative; width: 100%; max-height: 86%;
+  background: var(--bg-bottom); border-radius: 20px 20px 0 0;
+  padding: 16px 18px 24px; overflow-y: auto;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  animation: devSheetUp 0.3s cubic-bezier(0.2,0.8,0.2,1) both;
+}
+@keyframes devSheetUp { from { transform: translateY(100%); } to { transform: none; } }
+.dev-preview-img { width: 100%; border-radius: 12px; margin-top: 10px; }
+.dev-preview-pre {
+  background: rgba(0,0,0,0.3); border-radius: 10px; padding: 12px;
+  font-family: ui-monospace, "SF Mono", monospace; font-size: 11.5px;
+  color: #d6e2f5; white-space: pre-wrap; word-break: break-word;
+  margin-top: 10px; max-height: 50vh; overflow-y: auto;
+}
+.dev-preview-meta { font-size: 12px; color: var(--text-dim); margin: 4px 0 0; }
+
+/* Activity stats grid */
+.dev-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dev-stat-card {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; padding: 13px 14px;
+}
+.dev-stat-value { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
+.dev-stat-label { font-size: 11.5px; color: var(--text-dim); margin-top: 5px; }
+.dev-scan-list { display: flex; flex-direction: column; gap: 5px; }
+.dev-scan-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(255,255,255,0.04); border-radius: 9px; padding: 9px 12px;
+  font-size: 12.5px;
+}
+.dev-scan-row-cust { font-weight: 600; color: var(--text); }
+.dev-scan-row-sp { color: var(--text-dim); font-size: 11.5px; }
+.dev-scan-row-time { color: var(--text-faint); font-size: 11px; }
+
+/* Event log */
+.dev-event-list { display: flex; flex-direction: column; gap: 5px; }
+.dev-event-row {
+  background: rgba(255,255,255,0.04); border-left: 3px solid var(--text-faint);
+  border-radius: 8px; padding: 9px 12px;
+}
+.dev-event-row.is-error { border-left-color: #e74c3c; }
+.dev-event-type { font-size: 12px; font-weight: 700; color: var(--text); }
+.dev-event-msg { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; word-break: break-word; }
+.dev-event-time { font-size: 10.5px; color: var(--text-faint); margin-top: 3px; }
+.dev-inline-select {
+  background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; font: inherit; font-size: 12px; padding: 5px 8px;
+}
+
+/* Config editor */
+.dev-config-editor {
+  width: 100%; box-sizing: border-box; min-height: 280px; resize: vertical;
+  background: rgba(0,0,0,0.3); color: #d6e2f5; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px; padding: 12px;
+  font-family: ui-monospace, "SF Mono", monospace; font-size: 12px; line-height: 1.5;
+}
+
+/* Type-to-confirm modal */
+.dev-confirm-modal { position: fixed; inset: 0; z-index: 9500; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.dev-confirm-backdrop { position: absolute; inset: 0; background: rgba(8,20,44,0.78); }
+.dev-confirm-panel {
+  position: relative; width: 100%; max-width: 360px;
+  background: var(--bg-bottom); border: 1px solid rgba(231,76,60,0.4);
+  border-radius: 16px; padding: 20px;
+}
+.dev-confirm-title { font-size: 17px; font-weight: 700; color: #f7a39a; margin: 0 0 8px; }
+.dev-confirm-body { font-size: 13px; color: var(--text-muted); margin: 0 0 14px; line-height: 1.45; }
+.dev-confirm-input {
+  width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 9px; padding: 11px;
+  color: var(--text); font: inherit; font-size: 14px; margin-bottom: 14px;
+}
+.dev-confirm-actions { display: flex; gap: 9px; }
+
+/* Generic JSON form editor (Config tab) */
+.dev-form { display: flex; flex-direction: column; gap: 14px; }
+.dev-form-field { display: flex; flex-direction: column; gap: 5px; }
+.dev-form-field-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.dev-form-label {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  word-break: break-word;
+}
+.dev-form-path { font-size: 10.5px; color: var(--text-faint); font-family: ui-monospace, monospace; }
+.dev-form-input {
+  width: 100%; box-sizing: border-box;
+  background: rgba(255,255,255,0.07); color: var(--text);
+  border: 1px solid rgba(255,255,255,0.14); border-radius: 9px;
+  padding: 10px 12px; font: inherit; font-size: 14px;
+}
+.dev-form-input[type="number"] { width: auto; min-width: 120px; }
+/* nested object/array group */
+.dev-form-group {
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+  padding: 12px; display: flex; flex-direction: column; gap: 12px;
+  background: rgba(255,255,255,0.03);
+}
+.dev-form-group-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--text-dim); margin: 0;
+}
+/* toggle switch for booleans */
+.dev-toggle { position: relative; width: 46px; height: 27px; flex-shrink: 0; }
+.dev-toggle input { opacity: 0; width: 0; height: 0; }
+.dev-toggle-track {
+  position: absolute; inset: 0; border-radius: 99px;
+  background: rgba(255,255,255,0.18); transition: background 0.18s; cursor: pointer;
+}
+.dev-toggle-track::before {
+  content: ""; position: absolute; left: 3px; top: 3px;
+  width: 21px; height: 21px; border-radius: 50%; background: #fff;
+  transition: transform 0.18s;
+}
+.dev-toggle input:checked + .dev-toggle-track { background: var(--accent); }
+.dev-toggle input:checked + .dev-toggle-track::before { transform: translateX(19px); }
+/* array list item add/remove */
+.dev-array-item { display: flex; align-items: center; gap: 8px; }
+.dev-array-item .dev-form-input { flex: 1; }
+.dev-array-remove {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(231,76,60,0.18); color: #f7a39a; border: none;
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.dev-array-add {
+  align-self: flex-start; background: rgba(66,133,244,0.2); color: var(--accent-soft);
+  border: none; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 700;
+  padding: 7px 12px; cursor: pointer;
+}
+.dev-form-readonly-badge {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  color: #fcd34d; background: rgba(251,191,36,0.15); padding: 2px 7px;
+  border-radius: 5px; margin-left: 8px;
+}
+
+
+/* ────────── View-as picker + banner (2026-05-30) ────────── */
+.viewas-body { padding: 0 4px; }
+.viewas-intro { font-size: 13px; line-height: 1.5; margin: 0 0 18px; padding: 0 4px; }
+.viewas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.viewas-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px; padding: 16px 10px;
+  cursor: pointer; color: var(--text); font: inherit;
+  transition: background 0.15s, transform 0.1s;
+}
+.viewas-tile:active { transform: scale(0.96); background: rgba(255,255,255,0.1); }
+.viewas-tile-self { border-color: var(--accent); background: rgba(66,133,244,0.12); }
+.viewas-tile-initial {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-grad); color: #fff;
+  font-size: 18px; font-weight: 700;
+}
+.viewas-tile-name {
+  font-size: 12.5px; font-weight: 600; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+
+/* Home banner shown while impersonating */
+.viewas-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: rgba(66,133,244,0.16);
+  border: 1px solid rgba(66,133,244,0.4);
+  border-radius: 12px; padding: 9px 12px; margin: 10px 0 0;
+}
+.viewas-banner-text { font-size: 13px; color: var(--text); }
+.viewas-banner-text strong { font-weight: 700; }
+.viewas-banner-stop {
+  flex-shrink: 0; border: none; background: var(--accent); color: #fff;
+  font: inherit; font-size: 12px; font-weight: 700;
+  padding: 7px 12px; border-radius: 8px; cursor: pointer;
+}
+.viewas-banner-stop:active { transform: scale(0.96); }

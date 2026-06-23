@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+
+  <!-- Preconnect to Apps Script so the first API call doesn't pay the TCP+TLS cost.
+       Saves ~100-300ms on cold network depending on connection quality. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin />
+  <link rel="dns-prefetch" href="https://script.google.com" />
+  <meta name="theme-color" content="#1a5296" />
+  <title>DealerScan</title>
+
+  <link rel="manifest" href="manifest.json" />
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="DealerScan" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png?v=10" />
+
+  <link rel="stylesheet" href="styles/main.css?v=73" />
+  <!-- Google Identity Services (Sign-In with Google). async defer means
+       it loads in parallel with the rest of the page; auth/google.js polls
+       for window.google.accounts.id before rendering the button. -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <main>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN 1: sign-in (salesperson picker)
+         ───────────────────────────────────────────── -->
+    <section data-screen="signin" hidden>
+      <header class="signin-header">
+        <h1>DealerScan</h1>
+        <p class="muted">Sign in with your dealership Google account.</p>
+      </header>
+
+      <!-- Google Identity Services renders its button into this container.
+           Wrapped in a centered flex column so the button + error message
+           sit in the same column on the screen. -->
+      <div class="gis-wrap">
+        <div id="gis-button-container" class="gis-button-container"></div>
+
+        <!-- Remember me + Face ID consent. Checked by default since these
+             are typically work iPads — they want it remembered. Tapping
+             the row toggles the checkbox so the whole thing is one big tap target. -->
+        <label class="remember-row" id="remember-row">
+          <input type="checkbox" id="remember-checkbox" checked />
+          <span class="remember-text">
+            <span class="remember-title">Keep me signed in</span>
+            <span class="remember-sub" id="remember-sub">Stay signed in on this device</span>
+          </span>
+        </label>
+
+        <p id="signin-status" class="muted" hidden>Verifying…</p>
+        <p id="signin-error" class="signin-error" hidden></p>
+      </div>
+
+      <!-- LEGACY 19-tile picker — hidden by default. Dev gets access via
+           the "View as" affordance in Settings post-Sign-In. -->
+      <div class="picker-grid" id="picker-grid" hidden></div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN: view-as picker (dev only)
+         Lets a dev inspect another user's view without re-authenticating.
+         Sets a view-as override and routes home; the dev's real identity
+         and token are untouched.
+         ───────────────────────────────────────────── -->
+    <section data-screen="viewas" hidden>
+      <header class="screen-header">
+        <button class="icon-button" data-back="settings" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h1>View as</h1>
+      </header>
+      <div class="viewas-body">
+        <p class="muted viewas-intro">Tap a salesperson to see the app exactly as they do. This doesn't change your identity or sign you out — tap "Stop viewing" anytime to return.</p>
+        <div class="viewas-grid" id="viewas-grid"></div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN 2: home (signed in)
+         ───────────────────────────────────────────── -->
+    <section data-screen="home" hidden>
+      <!-- ── Pinned status strip (system-bar style) ────────────── -->
+      <div class="status-strip">
+        <div class="status-strip-left">
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <span class="status-label" id="status-label">Synced</span>
+        </div>
+        <button class="status-strip-right" id="btn-settings" type="button" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+
+      <!-- View-as banner — shown only while a dev is impersonating. Painted
+           by home.js; "Stop viewing" clears the override and re-renders. -->
+      <div class="viewas-banner" id="viewas-banner" hidden role="status">
+        <span class="viewas-banner-text">Viewing as <strong id="viewas-banner-name"></strong></span>
+        <button class="viewas-banner-stop" id="viewas-banner-stop" type="button">Stop viewing</button>
+      </div>
+
+      <!-- Announcement banner — hidden until home.js paints one in.
+           Auto-dismisses after 6s; tap to dismiss early. -->
+      <div class="announcement-banner" id="announcement-banner" hidden role="status" aria-live="polite">
+        <span class="announcement-banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        </span>
+        <div class="announcement-banner-body">
+          <p class="announcement-banner-from" id="announcement-banner-from"></p>
+          <p class="announcement-banner-text" id="announcement-banner-text"></p>
+        </div>
+        <button class="announcement-banner-close" id="announcement-banner-close" type="button" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="home-body">
+        <!-- ── Profile card: name + identity + today's count ──── -->
+        <div class="profile-card">
+          <div class="profile-card-avatar" id="profile-card-avatar">B</div>
+          <div class="profile-card-name-block">
+            <p class="profile-card-name" id="profile-card-name">Brandon</p>
+            <p class="profile-card-sub" id="profile-card-sub">Salesperson</p>
+          </div>
+          <div class="profile-card-stat">
+            <p class="profile-card-stat-value" id="stat-today-value"><span class="loading-spinner lg"></span></p>
+            <p class="profile-card-stat-label">today</p>
+          </div>
+        </div>
+
+        <!-- ── Tab-pill counters (today/week/total) ───────────── -->
+        <div class="counter-pills" role="group" aria-label="Activity range">
+          <button class="counter-pill counter-pill-active" id="pill-today" type="button" aria-pressed="true">
+            <span class="counter-pill-value" id="pill-today-value"><span class="loading-spinner"></span></span>
+            <span class="counter-pill-label">today</span>
+          </button>
+          <button class="counter-pill" id="pill-week" type="button" aria-pressed="false">
+            <span class="counter-pill-value" id="pill-week-value"><span class="loading-spinner"></span></span>
+            <span class="counter-pill-label">week</span>
+          </button>
+          <button class="counter-pill" id="pill-total" type="button" aria-pressed="false">
+            <span class="counter-pill-value" id="pill-total-value"><span class="loading-spinner"></span></span>
+            <span class="counter-pill-label">total</span>
+          </button>
+        </div>
+
+        <!-- ── Threaded timeline ──────────────────────────────── -->
+        <div class="timeline-header">
+          <p class="timeline-header-label">Timeline</p>
+          <p class="timeline-header-meta" id="timeline-meta"></p>
+        </div>
+        <div class="timeline" id="timeline-list">
+          <div class="skeleton skeleton-timeline-row"></div>
+          <div class="skeleton skeleton-timeline-row"></div>
+          <div class="skeleton skeleton-timeline-row"></div>
+        </div>
+
+        <!-- ── Split CTA: red beacon + secondary list icon ────── -->
+        <div class="home-cta-row">
+          <button class="cta-beacon" id="btn-new-scan" type="button">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
+          <span>New scan</span>
+          </button>
+          <button class="cta-secondary" id="btn-quick-menu" type="button" aria-label="More actions" aria-haspopup="menu">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- The dev "switch user" affordance gets moved to the settings screen.
+           Hidden recent-list element kept for now to avoid breaking the
+           lingering reference in swipe-action wiring code until that's refactored. -->
+      <div id="recent-list" hidden></div>
+      <div id="recent-count" hidden></div>
+      <h1 class="home-greeting" id="home-greeting" hidden></h1>
+      <button id="signout-btn" type="button" hidden></button>
+      <div class="version-footer" id="version-footer" hidden>DealerScan PWA · 1.0</div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN 3: customer picker
+         ───────────────────────────────────────────── -->
+    <section data-screen="customer" hidden>
+      <header class="screen-header">
+        <button class="icon-button" data-back="home" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h1>Customer</h1>
+      </header>
+
+      <div class="search-wrap">
+        <div class="search-input-wrap">
+          <input id="customer-input" type="text" placeholder="Type customer name…" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" />
+          <button class="search-clear" id="customer-input-clear" type="button" aria-label="Clear" hidden>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Inline "use as new" CTA — appears immediately under the input when
+             typed text doesn't match an existing customer. Sits where the
+             salesperson's finger already is, no scrolling required when the
+             keyboard is up. -->
+        <button class="inline-new-cta" id="btn-new-customer" type="button" hidden>
+          <span class="inline-new-cta-plus" aria-hidden="true">+</span>
+          <span class="inline-new-cta-label">Use "<span id="new-customer-name-echo"></span>" as new customer</span>
+          <span class="inline-new-cta-chev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </span>
+        </button>
+      </div>
+
+      <div class="recent-section">
+        <div class="section-header">
+          <h2>Recent</h2>
+        </div>
+        <div class="recent-list" id="customer-recent-list">
+          <div class="recent-empty muted small">Loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN 4: camera (real getUserMedia capture)
+         Full-bleed viewfinder, big shutter, Done button, thumbnail
+         peek of the most recent capture in the bottom-left.
+         ───────────────────────────────────────────── -->
+    <section data-screen="camera" hidden>
+      <div class="camera-stage" id="camera-stage">
+
+        <!-- Live video viewfinder (full-bleed) -->
+        <video id="camera-video" class="camera-video" playsinline autoplay muted></video>
+
+        <!-- Capture canvas — offscreen, used to grab frames from <video> -->
+        <canvas id="camera-canvas" hidden></canvas>
+
+        <!-- Shutter flash overlay — fades white briefly on capture -->
+        <div class="camera-flash" id="camera-flash" aria-hidden="true"></div>
+
+        <!-- Top chrome: cancel + customer chip (Done moved to bottom right) -->
+        <div class="camera-top">
+          <button class="icon-button camera-chrome-btn" data-back="customer" type="button" aria-label="Cancel and go back">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div class="camera-customer-chip" id="camera-customer-chip"></div>
+          <!-- Top-right: pick from photo library. No `capture` attr → opens the
+               OS photo picker instead of forcing the camera. Mirrors the X button. -->
+          <label class="icon-button camera-chrome-btn camera-library-btn" aria-label="Choose photos from library">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            <input id="camera-file-library" type="file" accept="image/*" multiple hidden />
+          </label>
+        </div>
+
+        <!-- Bottom chrome: thumbnail peek + shutter + done -->
+        <div class="camera-bottom">
+          <button class="camera-thumb-peek" id="camera-thumb-peek" type="button" hidden aria-label="Review captured photos">
+            <img id="camera-thumb-peek-img" alt="" />
+            <span class="camera-thumb-peek-count" id="camera-thumb-peek-count">0</span>
+          </button>
+
+          <button class="camera-shutter" id="btn-shutter" type="button" aria-label="Capture photo">
+            <span class="camera-shutter-ring"></span>
+            <span class="camera-shutter-core"></span>
+          </button>
+
+          <button class="camera-done-btn" id="btn-camera-done" type="button" disabled>
+            <span id="camera-done-label">Review</span>
+          </button>
+        </div>
+
+        <!-- Permission denied / no camera fallback -->
+        <div class="camera-fallback" id="camera-fallback" hidden>
+          <div class="camera-fallback-icon" aria-hidden="true">📷</div>
+          <h2>Camera unavailable</h2>
+          <p class="muted" id="camera-fallback-msg">
+            We couldn't open the camera. You can pick photos from your library instead.
+          </p>
+          <label class="primary-button camera-fallback-picker">
+            Pick from library
+            <input id="camera-file-fallback" type="file" accept="image/*" multiple hidden />
+          </label>
+          <button class="secondary-button" id="btn-camera-fallback-retry" type="button" style="margin-top: 8px;">
+            Try camera again
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN 5: review
+         ───────────────────────────────────────────── -->
+    <section data-screen="review" hidden>
+      <header class="screen-header">
+        <button class="icon-button" data-back="camera" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h1>Review</h1>
+      </header>
+
+      <p class="muted small" id="review-summary"></p>
+      <div class="review-grid" id="review-grid"></div>
+
+      <footer class="sticky-action">
+        <button class="primary-button" id="btn-upload-all" type="button">
+          Upload all
+        </button>
+      </footer>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN 6: upload progress (card-deck)
+         The deck holds N stacked cards, top card is "active" (uploading
+         right now). As each card completes it animates off-screen and
+         the next card slides forward. Stack visibly shrinks.
+         ───────────────────────────────────────────── -->
+    <section data-screen="upload" hidden>
+      <header class="screen-header">
+        <h1>Uploading</h1>
+      </header>
+
+      <p class="muted" id="upload-summary">Preparing…</p>
+
+      <div class="card-deck-stage" id="upload-deck"></div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN 7: done
+         ───────────────────────────────────────────── -->
+    <!-- ─────────────────────────────────────────────
+         SCREEN: dashboard — stats + week chart + top customers
+         ───────────────────────────────────────────── -->
+    <section data-screen="dashboard" hidden>
+      <header class="screen-header">
+        <button class="icon-button" data-back="home" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h1>Dashboard</h1>
+      </header>
+
+      <div class="dashboard-body">
+        <!-- Week chart: 7 vertical bars, today on the right -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <p class="dashboard-card-title">This week</p>
+            <p class="dashboard-card-meta" id="dash-week-total"><span class="loading-spinner"></span></p>
+          </div>
+          <div class="week-chart" id="week-chart" aria-label="Daily scan counts for the last 7 days">
+            <!-- 7 bars injected by JS -->
+          </div>
+          <div class="week-chart-labels" id="week-chart-labels">
+            <!-- 7 day labels injected by JS -->
+          </div>
+        </div>
+
+        <!-- Stat row: peak hour + avg docs + week scans -->
+        <div class="dashboard-stat-row">
+          <div class="dashboard-stat">
+            <p class="dashboard-stat-value" id="dash-peak-hour"><span class="loading-spinner lg"></span></p>
+            <p class="dashboard-stat-label">peak hour</p>
+          </div>
+          <div class="dashboard-stat">
+            <p class="dashboard-stat-value" id="dash-avg-docs"><span class="loading-spinner lg"></span></p>
+            <p class="dashboard-stat-label">avg docs / customer</p>
+          </div>
+          <div class="dashboard-stat">
+            <p class="dashboard-stat-value" id="dash-week-scans"><span class="loading-spinner lg"></span></p>
+            <p class="dashboard-stat-label">scans this week</p>
+          </div>
+        </div>
+
+        <!-- Top customers -->
+        <div class="dashboard-card">
+          <div class="dashboard-card-header">
+            <p class="dashboard-card-title">Top customers</p>
+            <p class="dashboard-card-meta">by docs this week</p>
+          </div>
+          <div class="dashboard-top-list" id="dash-top-list">
+            <p class="dashboard-empty">No customers this week yet.</p>
+          </div>
+        </div>
+
+        <!-- ── Team section (manager / dev only) ─────
+             Hidden by default; dashboard.js unhides if user has
+             viewAllData permission. Shows team-wide totals, per-
+             salesperson today counts, recent scans across team, and
+             inactive salespeople. -->
+        <div id="dashboard-team-section" class="dashboard-team-section" hidden>
+          <p class="settings-section-label dashboard-team-label">Team</p>
+
+          <!-- Search bar sits FLUSH under the Team label, thin and minimal. -->
+          <div class="team-search-pill-wrapper">
+            <svg class="team-search-pill-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              type="text"
+              id="team-customer-search"
+              class="team-search-pill-input"
+              placeholder="Search team customers…"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+            />
+          </div>
+          <div class="team-search-results-floating" id="team-search-results" hidden>
+            <p class="dashboard-empty" style="font-size: 12px;">Start typing to search across all salespeople.</p>
+          </div>
+
+          <!-- Team totals row -->
+          <div class="dashboard-stat-row">
+            <div class="dashboard-stat">
+              <p class="dashboard-stat-value" id="team-total-today"><span class="loading-spinner lg"></span></p>
+              <p class="dashboard-stat-label">team scans today</p>
+            </div>
+            <div class="dashboard-stat">
+              <p class="dashboard-stat-value" id="team-active-count"><span class="loading-spinner lg"></span></p>
+              <p class="dashboard-stat-label">active today</p>
+            </div>
+            <div class="dashboard-stat">
+              <p class="dashboard-stat-value" id="team-total-week"><span class="loading-spinner lg"></span></p>
+              <p class="dashboard-stat-label">team scans week</p>
+            </div>
+          </div>
+
+          <!-- Per-salesperson today bars (COLLAPSIBLE — collapsed by default) -->
+          <div class="dashboard-card dashboard-card--collapsible dashboard-card--collapsed" id="team-bars-card">
+            <div class="dashboard-card-header" data-collapse-toggle="team-bars-card">
+              <div>
+                <p class="dashboard-card-title">By salesperson today</p>
+                <p class="dashboard-card-meta" id="team-bars-meta">sorted by scan count</p>
+              </div>
+              <span class="chev" aria-hidden="true">▾</span>
+            </div>
+            <div class="collapse-body">
+              <div class="team-bars" id="team-bars">
+                <p class="dashboard-empty">No team scans yet today.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent scans across team (COLLAPSIBLE) -->
+          <div class="dashboard-card dashboard-card--collapsible dashboard-card--collapsed" id="team-recent-card">
+            <div class="dashboard-card-header" data-collapse-toggle="team-recent-card">
+              <div>
+                <p class="dashboard-card-title">Recent across team</p>
+                <p class="dashboard-card-meta">last 20</p>
+              </div>
+              <span class="chev" aria-hidden="true">▾</span>
+            </div>
+            <div class="collapse-body">
+              <div class="team-recent-list" id="team-recent-list">
+                <p class="dashboard-empty">No recent scans.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inactive salespeople (COLLAPSIBLE) -->
+          <div class="dashboard-card dashboard-card--collapsible dashboard-card--collapsed" id="team-inactive-card">
+            <div class="dashboard-card-header" data-collapse-toggle="team-inactive-card">
+              <div>
+                <p class="dashboard-card-title">Inactive today</p>
+                <p class="dashboard-card-meta" id="team-inactive-meta">haven’t scanned yet</p>
+              </div>
+              <span class="chev" aria-hidden="true">▾</span>
+            </div>
+            <div class="collapse-body">
+              <div class="team-inactive-list" id="team-inactive-list">
+                <p class="dashboard-empty">Everyone has scanned today.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN: settings
+         ───────────────────────────────────────────── -->
+    <section data-screen="settings" hidden>
+      <header class="screen-header">
+        <button class="icon-button" data-back="home" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h1>Settings</h1>
+      </header>
+
+      <div class="settings-body">
+
+        <!-- ── Visual ──────────────────────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">Appearance</p>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Accent color</p>
+              <p class="settings-row-sub">Used for buttons and highlights</p>
+            </div>
+          </div>
+          <div class="accent-swatches" id="accent-swatches">
+            <button class="accent-swatch" data-accent="blue"   aria-label="Blue"   style="background: linear-gradient(135deg, #5a9eff, #2b6ed4);"></button>
+            <button class="accent-swatch" data-accent="purple" aria-label="Purple" style="background: linear-gradient(135deg, #a78bfa, #7c3aed);"></button>
+            <button class="accent-swatch" data-accent="teal"   aria-label="Teal"   style="background: linear-gradient(135deg, #5eead4, #14b8a6);"></button>
+            <button class="accent-swatch" data-accent="amber"  aria-label="Amber"  style="background: linear-gradient(135deg, #fbbf24, #d97706);"></button>
+            <button class="accent-swatch" data-accent="rose"   aria-label="Rose"   style="background: linear-gradient(135deg, #fb7185, #e11d48);"></button>
+          </div>
+        </div>
+
+        <!-- ── Behavioral ─────────────────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">Behavior</p>
+
+          <label class="settings-row settings-row-toggle">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Haptic feedback</p>
+              <p class="settings-row-sub">Buzz on capture and important actions</p>
+            </div>
+            <span class="toggle">
+              <input type="checkbox" id="toggle-haptics" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+
+          <label class="settings-row settings-row-toggle">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Auto-advance nudge</p>
+              <p class="settings-row-sub">Pulse the Review button after each capture</p>
+            </div>
+            <span class="toggle">
+              <input type="checkbox" id="toggle-nudge" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+
+          <label class="settings-row settings-row-toggle">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Title-case customer names</p>
+              <p class="settings-row-sub">Convert "smith family" to "Smith Family"</p>
+            </div>
+            <span class="toggle">
+              <input type="checkbox" id="toggle-titlecase" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </span>
+          </label>
+        </div>
+
+        <!-- ── Account ────────────────────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">Account</p>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Signed in as</p>
+              <p class="settings-row-sub" id="settings-current-user">—</p>
+            </div>
+          </div>
+
+          <button class="settings-row settings-row-button" id="settings-switch-user" type="button" hidden>
+            <div class="settings-row-text">
+              <p class="settings-row-title">View as user</p>
+              <p class="settings-row-sub">Dev: inspect another user's view (does not change your identity)</p>
+            </div>
+            <svg class="settings-row-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+
+          <button class="settings-row settings-row-button" id="settings-sign-out" type="button">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Sign out</p>
+              <p class="settings-row-sub">End this session</p>
+            </div>
+            <svg class="settings-row-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+
+          <button class="settings-row settings-row-button" id="settings-dev-panel" type="button" hidden>
+            <div class="settings-row-text">
+              <p class="settings-row-title">Dev panel</p>
+              <p class="settings-row-sub">Manage users, roles, and system access</p>
+            </div>
+            <svg class="settings-row-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+
+        <!-- ── Health (diagnostics) ───────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">Health</p>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Connection</p>
+              <p class="settings-row-sub" id="health-connection">checking…</p>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Offline queue</p>
+              <p class="settings-row-sub" id="health-queue">checking…</p>
+            </div>
+            <button class="settings-row-chev-btn" id="health-drain-btn" type="button" hidden>
+              <span style="font-size: 11px; color: var(--accent-soft); font-weight: 500;">Drain now</span>
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Storage used</p>
+              <p class="settings-row-sub" id="health-storage">checking…</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── About ──────────────────────────────── -->
+        <div class="settings-section">
+          <p class="settings-section-label">About</p>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Version</p>
+              <p class="settings-row-sub" id="settings-version">DealerScan PWA · 1.0</p>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-text">
+              <p class="settings-row-title">Backend</p>
+              <p class="settings-row-sub" id="settings-backend-version">checking…</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────
+         SCREEN: dev-panel (dev role only)
+         User management + system events + raw diagnostics.
+         Hidden from non-dev users by the JS that wires it up.
+         ───────────────────────────────────────────── -->
+    <section data-screen="dev-panel" hidden>
+      <header class="screen-header">
+        <button class="icon-button" data-back="settings" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h1>Dev panel</h1>
+      </header>
+
+      <div class="dev-panel-body">
+        <div class="dev-warning">
+          <i data-feather="alert-triangle" style="width: 14px; height: 14px;"></i>
+          <span>Changes here affect who can sign in. Edit with care.</span>
+        </div>
+
+        <!-- Tab bar -->
+        <div class="dev-tabs" id="dev-tabs" role="tablist">
+          <button class="dev-tab active" data-devtab="users" type="button" role="tab">Users</button>
+          <button class="dev-tab" data-devtab="drive" type="button" role="tab">Drive</button>
+          <button class="dev-tab" data-devtab="activity" type="button" role="tab">Activity</button>
+          <button class="dev-tab" data-devtab="errors" type="button" role="tab">Errors</button>
+          <button class="dev-tab" data-devtab="config" type="button" role="tab">Config</button>
+        </div>
+
+        <!-- TAB: Users -->
+        <div class="dev-tab-panel" data-devtabpanel="users">
+        <!-- User registry table -->
+        <div class="dev-section">
+          <div class="dev-section-header">
+            <p class="dev-section-label">Users</p>
+            <button class="dev-section-action" id="dev-add-user" type="button">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Add user</span>
+            </button>
+          </div>
+          <div class="dev-user-list" id="dev-user-list">
+            <p class="muted" style="text-align: center; padding: 24px 8px; font-size: 13px;">Loading registry…</p>
+          </div>
+        </div>
+
+        <!-- Roles overview (read-only — roles defined in registry JSON) -->
+        <div class="dev-section">
+          <p class="dev-section-label">Roles</p>
+          <div class="dev-role-list" id="dev-role-list"></div>
+        </div>
+
+        <!-- Refresh registry from server -->
+        <div class="dev-section">
+          <button class="dev-button-wide" id="dev-refresh-registry" type="button">
+            Refresh registry from server
+          </button>
+        </div>
+        </div><!-- /TAB: Users -->
+
+        <!-- TAB: Drive browser -->
+        <div class="dev-tab-panel" data-devtabpanel="drive" hidden>
+          <div class="dev-section">
+            <div class="dev-section-header">
+              <p class="dev-section-label" id="dev-drive-breadcrumb">Customer folders</p>
+              <button class="dev-section-action" id="dev-drive-refresh" type="button">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+            <div class="dev-drive-list" id="dev-drive-list">
+              <p class="muted" style="text-align:center;padding:24px 8px;font-size:13px;">Loading…</p>
+            </div>
+          </div>
+          <div class="dev-section">
+            <button class="dev-button-danger dev-button-wide" id="dev-empty-trash" type="button">
+              Empty Drive trash (permanent)
+            </button>
+          </div>
+        </div><!-- /TAB: Drive -->
+
+        <!-- TAB: Activity -->
+        <div class="dev-tab-panel" data-devtabpanel="activity" hidden>
+          <div class="dev-section">
+            <p class="dev-section-label">Today at a glance</p>
+            <div class="dev-stat-grid" id="dev-stat-grid">
+              <p class="muted" style="grid-column:1/-1;text-align:center;padding:16px;font-size:13px;">Loading…</p>
+            </div>
+          </div>
+          <div class="dev-section">
+            <p class="dev-section-label">Recent scans</p>
+            <div class="dev-scan-list" id="dev-scan-list"></div>
+          </div>
+        </div><!-- /TAB: Activity -->
+
+        <!-- TAB: Errors -->
+        <div class="dev-tab-panel" data-devtabpanel="errors" hidden>
+          <div class="dev-section">
+            <div class="dev-section-header">
+              <p class="dev-section-label">Event log</p>
+              <select id="dev-error-filter" class="dev-inline-select">
+                <option value="all">All events</option>
+                <option value="error">Errors only</option>
+                <option value="uploadFailed">Upload failures</option>
+                <option value="authFailed">Auth failures</option>
+              </select>
+            </div>
+            <div class="dev-event-list" id="dev-event-list">
+              <p class="muted" style="text-align:center;padding:24px 8px;font-size:13px;">Loading…</p>
+            </div>
+          </div>
+        </div><!-- /TAB: Errors -->
+
+        <!-- TAB: Config -->
+        <div class="dev-tab-panel" data-devtabpanel="config" hidden>
+          <div class="dev-section">
+            <div class="dev-section-header">
+              <p class="dev-section-label">System files</p>
+              <button class="dev-section-action" id="dev-config-reload" type="button">
+                <span>Reload</span>
+              </button>
+            </div>
+            <select id="dev-file-picker" class="dev-inline-select" style="width:100%;margin-bottom:4px;">
+              <option value="">Loading files…</option>
+            </select>
+            <p class="muted" id="dev-file-note" style="font-size:11px;margin:0;"></p>
+          </div>
+
+          <div class="dev-section">
+            <div class="dev-section-header">
+              <p class="dev-section-label" id="dev-file-title">Fields</p>
+              <button class="dev-section-action" id="dev-file-advanced-toggle" type="button">
+                <span>Advanced (raw)</span>
+              </button>
+            </div>
+            <!-- Friendly form view (generated from JSON structure) -->
+            <div class="dev-form" id="dev-file-form">
+              <p class="muted" style="text-align:center;padding:24px 8px;font-size:13px;">Select a file above.</p>
+            </div>
+            <!-- Raw JSON fallback (hidden until Advanced) -->
+            <textarea id="dev-config-editor" class="dev-config-editor" spellcheck="false" autocapitalize="off" autocorrect="off" hidden></textarea>
+            <button class="dev-button-wide" id="dev-config-save" type="button" style="margin-top:10px;" hidden>
+              Save changes
+            </button>
+            <p class="muted" id="dev-file-save-note" style="font-size:11px;margin-top:8px;"></p>
+          </div>
+        </div><!-- /TAB: Config -->
+      </div>
+    </section>
+
+    <!-- Announcement compose modal — manager + dev only.
+         Triggered by quick menu → New announcement. -->
+    <div class="ann-modal" id="ann-modal" hidden>
+      <div class="ann-modal-backdrop" id="ann-modal-backdrop"></div>
+      <div class="ann-modal-panel">
+        <header class="ann-modal-header">
+          <h2>New announcement</h2>
+          <button class="icon-button" id="ann-modal-close" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </header>
+        <div class="ann-modal-body">
+          <label class="ann-field">
+            <span class="ann-field-label">Message</span>
+            <textarea id="ann-body" rows="3" maxlength="280" placeholder="Test drive event Saturday 10am…"></textarea>
+            <span class="ann-char-count" id="ann-char-count">0 / 280</span>
+          </label>
+
+          <div class="ann-field">
+            <span class="ann-field-label">Audience</span>
+            <div class="ann-audience-toggle" id="ann-audience-toggle">
+              <button type="button" data-aud="all" class="active">Everyone</button>
+              <button type="button" data-aud="users">Specific people</button>
+            </div>
+          </div>
+
+          <div class="ann-field" id="ann-users-picker" hidden>
+            <span class="ann-field-label">Select recipients</span>
+            <div class="ann-users-list" id="ann-users-list">
+              <!-- populated from registry by announcements.js -->
+            </div>
+          </div>
+
+          <div class="ann-field">
+            <span class="ann-field-label">Expires after</span>
+            <select id="ann-ttl">
+              <option value="1">1 hour</option>
+              <option value="4">4 hours</option>
+              <option value="24" selected>24 hours</option>
+              <option value="72">3 days</option>
+            </select>
+          </div>
+        </div>
+        <footer class="ann-modal-footer">
+          <button class="dev-button-secondary" id="ann-modal-cancel" type="button">Cancel</button>
+          <button class="dev-button-primary" id="ann-modal-send" type="button">Send</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Modal: add/edit user (lives outside the screen so it can overlay everything) -->
+    <div class="dev-user-modal" id="dev-user-modal" hidden>
+      <div class="dev-user-modal-backdrop" id="dev-user-modal-backdrop"></div>
+      <div class="dev-user-modal-panel">
+        <header class="dev-user-modal-header">
+          <h2 id="dev-user-modal-title">Add user</h2>
+          <button class="icon-button" id="dev-user-modal-close" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </header>
+        <div class="dev-user-modal-body">
+          <label class="dev-field">
+            <span class="dev-field-label">Email</span>
+            <input type="email" id="dev-user-email" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="someone@example.com" />
+          </label>
+          <label class="dev-field">
+            <span class="dev-field-label">Name</span>
+            <input type="text" id="dev-user-name" autocapitalize="words" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Display name" />
+          </label>
+          <label class="dev-field">
+            <span class="dev-field-label">Role</span>
+            <select id="dev-user-role">
+              <option value="sales">Salesperson</option>
+              <option value="manager">Manager</option>
+              <option value="dev">Dev</option>
+            </select>
+          </label>
+          <label class="dev-field dev-field-checkbox">
+            <input type="checkbox" id="dev-user-active" checked />
+            <span class="dev-field-label">Active (can sign in)</span>
+          </label>
+        </div>
+        <footer class="dev-user-modal-footer">
+          <button class="dev-button-secondary" id="dev-user-modal-cancel" type="button">Cancel</button>
+          <button class="dev-button-primary" id="dev-user-modal-save" type="button">Save</button>
+          <button class="dev-button-danger" id="dev-user-modal-delete" type="button" hidden>Deactivate</button>
+        </footer>
+      </div>
+    </div>
+
+    <section data-screen="done" hidden>
+      <div class="done-wrap">
+        <div class="done-check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h1>All set</h1>
+        <p class="muted" id="done-summary">Uploaded.</p>
+
+        <div class="done-actions">
+          <button class="primary-button" id="btn-scan-another-same" type="button">Scan more for this customer</button>
+          <button class="secondary-button" id="btn-scan-different" type="button">Different customer</button>
+        </div>
+      </div>
+    </section>
+
+  
+  <!-- Quick action popover — anchored to the kebab button on the home screen.
+       Pinned at the bottom-right, animates up from the button. -->
+  <div class="quick-menu" id="quick-menu" hidden role="menu" aria-labelledby="btn-quick-menu">
+    <div class="quick-menu-backdrop" id="quick-menu-backdrop"></div>
+    <div class="quick-menu-panel">
+      <button class="quick-menu-item" data-menu-action="dashboard" type="button" role="menuitem">
+        <span class="quick-menu-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </span>
+        <span class="quick-menu-item-label">Dashboard</span>
+      </button>
+      <button class="quick-menu-item" data-menu-action="search" type="button" role="menuitem">
+        <span class="quick-menu-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        </span>
+        <span class="quick-menu-item-label">Search customers</span>
+      </button>
+      <button class="quick-menu-item" data-menu-action="switch-user" type="button" role="menuitem">
+        <span class="quick-menu-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+        </span>
+        <span class="quick-menu-item-label">Switch user</span>
+      </button>
+      <button class="quick-menu-item" data-menu-action="announce" id="qm-announce-item" type="button" role="menuitem" hidden>
+        <span class="quick-menu-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+        </span>
+        <span class="quick-menu-item-label">New announcement</span>
+      </button>
+      <div class="quick-menu-divider" aria-hidden="true"></div>
+      <button class="quick-menu-item" data-menu-action="help" type="button" role="menuitem">
+        <span class="quick-menu-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        <span class="quick-menu-item-label">Help</span>
+      </button>
+      <button class="quick-menu-item" data-menu-action="report" type="button" role="menuitem">
+        <span class="quick-menu-item-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </span>
+        <span class="quick-menu-item-label">Report issue</span>
+      </button>
+    </div>
+  </div>
+  </main>
+
+  <script type="module" src="scripts/app.js?v=74"></script>
+</body>
+</html>

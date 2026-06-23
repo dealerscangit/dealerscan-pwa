@@ -1,0 +1,16 @@
+.DS_Store
+*.log
+node_modules/
+.env
+.env.local
+
+# OS / editor
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# Build outputs (none yet, but reserved)
+dist/
+build/
