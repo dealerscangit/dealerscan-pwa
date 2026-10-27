@@ -306,7 +306,8 @@ async function paintHealth() {
       drainBtn.disabled = true;
       drainBtn.querySelector("span").textContent = "Draining…";
       try {
-        await processQueue();
+        // force: retry everything now, ignoring the automatic retry wait
+        await processQueue(undefined, { force: true });
       } catch (err) {
         console.warn("[settings] manual drain failed:", err);
       }

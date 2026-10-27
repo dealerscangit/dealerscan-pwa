@@ -124,13 +124,15 @@ async function drainQueue() {
     const result = await processQueue((progress) => {
       // onProgress fires for each item's stages: starting, uploading, done.
       // We only update the label on "starting" so the count is the
-      // index of the item currently in flight.
+      // index of the item currently in flight. (Scans added mid-pass are
+      // picked up by the same pass, so total can grow.)
       if (progress.stage === "starting") {
         processed++;
         const label = document.getElementById("status-label");
-        if (label) label.textContent = `Syncing ${processed} of ${total}`;
+        if (label) label.textContent = `Syncing ${processed} of ${Math.max(total, processed)}`;
       }
     });
+    if (result.skipped) return; // another pass is running and will handle it
 
     console.log("[app] queue drain result:", result);
 
@@ -156,6 +158,14 @@ setTimeout(drainQueue, 2500);
 window.addEventListener("online", () => {
   console.log("[app] back online — draining queue");
   drainQueue();
+});
+// Drain right after a scan is saved (fired by the upload screen).
+window.addEventListener("dealerscan:drain", () => drainQueue());
+// Drain when the app comes back to the foreground. iOS suspends the PWA
+// when you switch apps or lock the phone, which interrupts uploads; this
+// resumes them as soon as the app is open again.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") drainQueue();
 });
 
 // ───────────────────────────────────────────────────────────

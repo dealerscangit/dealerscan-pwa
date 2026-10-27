@@ -25,6 +25,27 @@ function _attachAuth(url) {
   return url;
 }
 
+// Time limits so a stuck request fails and gets retried instead of hanging
+// forever. Uploads get longer: the backend may briefly wait its turn when
+// several photos land at once.
+const UPLOAD_TIMEOUT_MS = 60000;
+const FOLDER_TIMEOUT_MS = 30000;
+
+async function fetchWithTimeout(resource, options = {}, timeoutMs = 30000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(resource, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 
 
 /**
@@ -38,7 +59,7 @@ export async function createCustomerFolder(customerName, salesName, isNew) {
   url.searchParams.set("customerName", customerName);
   url.searchParams.set("salesName", salesName);
   url.searchParams.set("isNew", isNew ? "true" : "false");
-  const res = await fetch(url.toString(), { method: "GET" });
+  const res = await fetchWithTimeout(url.toString(), { method: "GET" }, FOLDER_TIMEOUT_MS);
   if (!res.ok) throw new Error(`createFolder HTTP ${res.status}`);
   const folderId = (await res.text()).trim();
   if (!folderId || folderId.startsWith("ERROR")) {
@@ -51,18 +72,27 @@ export async function createCustomerFolder(customerName, salesName, isNew) {
  * Upload one photo to the folder.
  * @param {string} folderId  - from createCustomerFolder
  * @param {string} photoBase64 - base64 WITHOUT data: prefix (backend strips either way)
- * @param {string} filename  - server may override based on Vision API document detection
+ * @param {string} filename  - informational; backend names files "Doc N.jpg"
+ * @param {object} [opts]
+ * @param {string} [opts.uploadId] - unique per photo; backend ignores re-sends
+ * @param {boolean} [opts.retry]   - true when re-sending from the queue
  */
-export async function uploadPhoto(folderId, photoBase64, filename = "scan.jpg") {
+export async function uploadPhoto(folderId, photoBase64, filename = "scan.jpg", opts = {}) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "uploadPhoto");
   _attachAuth(url);
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithTimeout(url.toString(), {
     method: "POST",
     // Apps Script doPost is finicky with Content-Type; text/plain avoids CORS preflight
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ folderId, photoData: photoBase64, filename }),
-  });
+    body: JSON.stringify({
+      folderId,
+      photoData: photoBase64,
+      filename,
+      uploadId: opts.uploadId || "",
+      retry: !!opts.retry,
+    }),
+  }, UPLOAD_TIMEOUT_MS);
   if (!res.ok) throw new Error(`uploadPhoto HTTP ${res.status}`);
   const txt = (await res.text()).trim();
   if (!txt.startsWith("OK")) throw new Error(`uploadPhoto backend: ${txt}`);

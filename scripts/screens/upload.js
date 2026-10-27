@@ -10,8 +10,8 @@
 // + filename. Pending/back-stack cards are dimmed.
 
 import { getCurrentSalesperson } from "../currentUser.js";
-import { createCustomerFolder, uploadPhoto } from "../apiClient.js";
-import { enqueue as enqueueOffline } from "../offlineQueue.js";
+import { createCustomerFolder } from "../apiClient.js";
+import { enqueue as enqueueOffline, newUploadId } from "../offlineQueue.js";
 import { reportError } from "../errorReporter.js";
 import { compressDataUrl } from "../imageCompress.js";
 import { invalidate as invalidateCache } from "../dataCache.js";
@@ -42,164 +42,84 @@ export async function renderUpload() {
     if (!sp) throw new Error("No signed-in salesperson");
     if (!_session.customerName) throw new Error("No customer selected");
 
-    // ── Offline path: queue everything for later, skip the live upload loop.
-    // If we're offline at the moment of upload, write the whole scan (customer
-    // + folder + photos) to IndexedDB and route straight to the done screen
-    // with a "queued" message. processQueue() runs on boot + on the online
-    // event to drain the queue automatically.
-    if (!navigator.onLine) {
-      await enqueueOffline({
-        salesName: sp,
-        customerName: _session.customerName,
-        isNewCustomer: !!_session.isNewCustomer,
-        folderId: _session.folderId || null,
-        photos: _session.photos.map((p) => ({
-          dataUrl: p.dataUrl,
-          filename: p.filename,
-        })),
-      });
-      // Mark all photos as queued so the done screen shows a sensible summary
-      _session.photos.forEach((p) => { p.status = "queued"; });
-      _session.uploadStatus = "queued";
-      _isUploading = false;
-      // New scan activity — drop the cached home overview so counts refresh.
-      invalidateCache(`homeOverview:${getCurrentSalesperson()}`);
-      _showScreen("done");
-      return;
-    }
-
-    // 1) Folder — create if not yet provisioned. This MUST complete before
-    //    we fire photo uploads because the photos need the folder id.
-    if (!_session.folderId) {
-      _session.folderId = await createCustomerFolder(
-        _session.customerName,
-        sp,
-        _session.isNewCustomer
-      );
-    }
-
-    // 2) Parallel upload with optimistic UI + offline-queue fallback.
+    // Flow (2026-10-27 rewrite):
+    //   1) Compress photos on the phone. If online and this is the first
+    //      batch for the customer, create the Drive folder at the same time.
+    //   2) SAVE the scan to the on-phone queue (IndexedDB) before any
+    //      upload. Nothing can be lost after this point — not by locking
+    //      the phone, switching apps, or iOS closing the PWA.
+    //   3) Hand off to the queue, which uploads 2 photos at a time and
+    //      deletes each one from the phone once it's in Drive.
+    //   4) Show the done screen right away. The status strip on Home
+    //      shows "Syncing" until the queue is empty.
     //
-    // Strategy (in plain English):
-    //   a) Compress all photos in parallel (4-6x payload reduction)
-    //   b) Fire all uploadPhoto calls AT ONCE (Promise.all) — instead of
-    //      waiting for each one, they all race together
-    //   c) Animate the deck through "success" optimistically as soon as
-    //      uploads START — the user sees the success state immediately
-    //      and can close the PWA / switch to the extension while bytes
-    //      finish moving in the background
-    //   d) If any actual upload fails AFTER we showed "done", silently
-    //      enqueue it to the offline queue. The boot/online auto-drain
-    //      picks it up. User gets a "Synced" toast later if they're
-    //      still in the app, or it just lands in Drive when they reopen.
-    //
-    // This stacks three perf wins:
-    //   - Compress: 6x smaller payload
-    //   - Parallel: 3 photos in the time of 1
-    //   - Optimistic: user perceived time is the animation, not the network
-    //
-    // Real upload time for 3 photos: ~12s -> ~4s actual, ~1s perceived
-
-    // Mark all photos active for the visual deck
+    // Previously photos were only queued AFTER an upload failed, so if iOS
+    // suspended the app mid-upload the photos could vanish, and every
+    // interrupted upload got re-sent in full.
     _session.photos.forEach((p) => {
       if (p.status !== "success") p.status = "active";
     });
     paintDeck();
     paintSummary();
 
-    // Step 2a: compress all photos in parallel. This runs locally, no
-    // network. Typically 100-300ms per photo on iPhone.
-    const compressedPhotos = await Promise.all(
-      _session.photos.map(async (photo) => {
-        if (photo.status === "success") return null;
-        const dataUrl = await compressDataUrl(photo.dataUrl);
-        return { photo, dataUrl };
-      })
+    const toSend = _session.photos.filter((p) => p.status !== "success");
+    const online = navigator.onLine;
+
+    const folderPromise = (online && !_session.folderId)
+      ? createCustomerFolder(_session.customerName, sp, _session.isNewCustomer)
+          .then((id) => { _session.folderId = id; return id; })
+          .catch((err) => {
+            // Not fatal: the queue creates the folder when it drains.
+            console.warn("[upload] createFolder failed, queue will retry:", err);
+            return null;
+          })
+      : Promise.resolve(_session.folderId || null);
+
+    const compressed = await Promise.all(
+      toSend.map(async (photo) => ({
+        dataUrl: await compressDataUrl(photo.dataUrl),
+        filename: photo.filename,
+        uploadId: newUploadId(),
+        compressed: true,
+      }))
     );
+    const folderId = await folderPromise;
 
-    // Step 2b: fire all uploads simultaneously. We DO NOT await each one
-    // before the next — they all race. We attach a per-photo success/fail
-    // handler that updates _that_ photo's status independently.
-    //
-    // We store the Promises so we can also fire-and-forget them if the
-    // user is impatient and we want to navigate to done early.
-    const uploadPromises = compressedPhotos
-      .filter((x) => x !== null)
-      .map(async ({ photo, dataUrl }, index) => {
-        try {
-          const base64 = dataUrlToBase64(dataUrl);
-          await uploadPhoto(_session.folderId, base64, photo.filename);
-          photo.status = "success";
-          updateAllCards();
-          paintSummary();
-          return { ok: true, photo };
-        } catch (err) {
-          console.warn(`[upload] photo ${photo.filename} failed, queueing:`, err);
-          // Don't mark failed — instead silently queue for retry. The
-          // user's "done" experience is unaffected.
-          try {
-            await enqueueOffline({
-              salesName: sp,
-              customerName: _session.customerName,
-              isNewCustomer: false,  // folder already exists
-              folderId: _session.folderId,
-              photos: [{ dataUrl, filename: photo.filename }],
-            });
-            photo.status = "queued";
-          } catch (qErr) {
-            console.error(`[upload] queue fallback also failed:`, qErr);
-            photo.status = "failed";
-            reportError("uploadFailed", {
-              customer: _session.customerName,
-              folderName: _session.folderId,
-              filename: photo.filename,
-              error: err,
-            });
-          }
-          updateAllCards();
-          paintSummary();
-          return { ok: false, photo };
-        }
-      });
+    await enqueueOffline({
+      salesName: sp,
+      customerName: _session.customerName,
+      isNewCustomer: !!_session.isNewCustomer,
+      folderId,
+      photos: compressed,
+    });
+    // New scan activity — drop the cached home overview so counts refresh.
+    invalidateCache(`homeOverview:${sp}`);
 
-    // Step 2c: optimistic UX. Animate the success state immediately
-    // (don't wait for the Promises). The user sees "All set" within
-    // ~600ms regardless of actual network speed.
-    //
-    // Visual sequence:
-    //   - All cards flip to success state at once (animateAllToSuccess)
-    //   - Hold ~600ms so the user reads the check icons (substantial,
-    //     not blink-and-miss-it)
-    //   - Route to done screen
-    //
-    // The Promise.all keeps running in the background. If any photo
-    // fails, the queue fallback kicks in silently. The done screen
-    // doesn't lie — if anything DID fail and got queued, the user
-    // will see a "Syncing N queued" indicator on the home screen.
+    if (!online) {
+      _session.photos.forEach((p) => { p.status = "queued"; });
+      _session.uploadStatus = "queued";
+      _isUploading = false;
+      _showScreen("done");
+      return;
+    }
+
+    // Start uploading now (app.js runs the queue and shows progress + a
+    // "Synced" toast). Safe to call while another drain is running — that
+    // pass picks the new scan up.
+    window.dispatchEvent(new CustomEvent("dealerscan:drain"));
+
+    _session.uploadStatus = "sending";
     animateAllToSuccess();
     await sleep(700);
-
     _isUploading = false;
-    // New scan activity — drop the cached home overview so the counts on
-    // the home/dashboard screens reflect this upload immediately instead
-    // of waiting out the cache TTL.
-    invalidateCache(`homeOverview:${getCurrentSalesperson()}`);
     _showScreen("done");
-
-    // Continue tracking the upload promises in the background. We do
-    // this AFTER navigating so failures don't block the user. If they
-    // all succeed the user just sees the regular "Synced" status; if
-    // any fail they go into the offline queue and drain later.
-    Promise.allSettled(uploadPromises).then((results) => {
-      const failed = results.filter((r) => r.status === "fulfilled" && !r.value.ok);
-      if (failed.length > 0) {
-        console.log(`[upload] ${failed.length} photos queued for retry after optimistic done`);
-      }
-    });
   } catch (err) {
-    console.error("[upload] flow failed:", err);
-    reportError("createFolderFailed", {
+    // Only reached if the phone couldn't save the scan at all (e.g. storage
+    // blocked). Photos are still in the session, so Retry is safe.
+    console.error("[upload] could not save scan:", err);
+    reportError("uploadFailed", {
       customer: _session.customerName,
+      folderName: _session.folderId,
       error: err,
     });
     _isUploading = false;
@@ -372,23 +292,6 @@ function addRetryAffordance() {
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
-
-function dataUrlToBase64(dataUrl) {
-  if (dataUrl.startsWith("data:image/svg+xml")) {
-    const utf8 = decodeURIComponent(dataUrl.split(",")[1] || "");
-    return btoa(unescape(encodeURIComponent(utf8)));
-  }
-  const idx = dataUrl.indexOf(",");
-  return idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
-}
-
-
-// All photos at once: paint their current status into every visible card.
-// Used by parallel upload so multiple photos can show "success" simultaneously
-// without waiting for the sequential paintDeck pass.
-function updateAllCards() {
-  paintDeck();
-}
 
 // Optimistic UX: flip every active photo to success and play the check
 // animation, regardless of whether the actual network call has resolved.

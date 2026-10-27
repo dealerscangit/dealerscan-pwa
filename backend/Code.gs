@@ -1,8 +1,23 @@
 // ============================================================
 // DealerScan / Scan Docs — Apps Script
-// Last updated: 2026-05-26 — PWA-era additions
+// Last updated: 2026-10-27 — upload speed fix (backend 1.15)
 //
-// CHANGES IN THIS REVISION (from the version Brandon found in the editor):
+// CHANGES IN 1.15 (upload speed / offline-queue fix):
+//   1. REMOVED Google Vision document detection from uploadPhoto. Every
+//      photo was making a Vision API round trip before it returned. Files
+//      are now named "Doc N.jpg". The VISION_API_KEY script property is no
+//      longer read and can be deleted.
+//   2. uploadPhoto accepts an optional `uploadId`. A retry with the same id
+//      returns OK without saving a second copy (stops queue duplicates).
+//   3. Naming + file creation run under a script lock so two photos
+//      uploading at once can't both become "Doc 3".
+//   4. ScanLog photo count + "Complete" status are updated in ONE write,
+//      finding the row with a search instead of reading the whole sheet
+//      twice. A failure here no longer fails the upload — the photo is
+//      already safe in Drive, and returning ERROR made the PWA re-upload it.
+//   Fully compatible with older PWA builds (uploadId is optional).
+//
+// CHANGES IN 1.14 REVISION (from the version Brandon found in the editor):
 //   1. NEW endpoint `hideCustomer`   — remove a customer from a salesperson's
 //      history sheet row. Does NOT touch Drive folders. Used by PWA's
 //      swipe-to-remove gesture on the recent-customers list.
@@ -37,13 +52,6 @@ const MAX_HISTORY = 5;
 const CONFIG_FILE_NAME = "_DealerScan_Config.json";
 const LOG_FILE_NAME    = "_DealerScan_Log.json";
 const EVENTS_FILE_NAME = "_DealerScan_Events.json";
-
-// Vision API key read from Script Properties (set in Project Settings)
-function getVisionApiKey() {
-  const key = PropertiesService.getScriptProperties().getProperty('VISION_API_KEY');
-  if (!key) throw new Error("VISION_API_KEY not set in Script Properties. See Project Settings → Script Properties.");
-  return key;
-}
 
 function getHistorySpreadsheet() {
   return SpreadsheetApp.openById(HISTORY_SHEET_ID);
@@ -509,70 +517,82 @@ function createCustomerFolder(e) {
   return ContentService.createTextOutput(folder.getId());
 }
 
-function detectDocumentType(base64Image, docNumber) {
-  var url = "https://vision.googleapis.com/v1/images:annotate?key=" + getVisionApiKey();
-  var payload = {
-    requests: [{
-      image: { content: base64Image },
-      features: [{ type: "TEXT_DETECTION" }, { type: "LABEL_DETECTION", maxResults: 10 }]
-    }]
-  };
-  var result = JSON.parse(UrlFetchApp.fetch(url, {
-    method: "POST", contentType: "application/json", payload: JSON.stringify(payload)
-  }).getContentText());
-  var text = result.responses[0].textAnnotations
-    ? result.responses[0].textAnnotations[0].description.toLowerCase() : "";
-  var labels = result.responses[0].labelAnnotations
-    ? result.responses[0].labelAnnotations.map(function(l) { return l.description.toLowerCase(); }) : [];
-  if (text.indexOf("driver") > -1 || text.indexOf("license") > -1 || text.indexOf("dl") > -1
-      || labels.indexOf("driver's license") > -1) {
-    var n = extractNameFromLicense(result);
-    return n ? n + " -- DL" : "DL";
-  }
-  return "Doc " + docNumber;
-}
-
-function extractNameFromLicense(visionResult) {
-  try {
-    if (!visionResult.responses[0].textAnnotations) return null;
-    var lines = visionResult.responses[0].textAnnotations[0].description.split("\n");
-    for (var i = 0; i < lines.length; i++) {
-      if (lines[i].trim().match(/[A-Z]\d{3}-\d{3}/)) {
-        var last = (lines[i + 1] || "").trim().replace(/\d/g, "").trim();
-        var first = (lines[i + 2] || "").trim().replace(/\d/g, "").trim().split(" ")[0];
-        if (last.length > 1 && first.length > 1) {
-          return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
-               + " " + last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();
-        }
-      }
-    }
-    return null;
-  } catch(e) { return null; }
-}
+// ────────── PHOTO UPLOAD (1.15) ──────────
+// Saves one photo into a customer folder as "Doc N.jpg".
+//
+// POST body (JSON, sent as text/plain):
+//   { folderId, photoData, uploadId?, retry? }
+//   - photoData: base64 JPEG, with or without a data: prefix
+//   - uploadId:  unique id per photo, made by the PWA. Optional.
+//   - retry:     true when this is a re-send from the offline queue.
+//
+// Duplicate protection: the PWA re-sends a photo whenever it didn't hear
+// back (phone locked, app backgrounded, timeout), even if the first send
+// actually landed. With an uploadId we remember what's been saved:
+//   - CacheService for 6 hours (instant check), and
+//   - the Drive file's description ("dealerscan-upload:<id>"), checked only
+//     on retries, for queue drains that happen days later.
+//
+// Returns plain text "OK" on success (including "already saved"), or
+// "ERROR: ..." if the photo was NOT saved and should be retried.
+var UPLOAD_ID_CACHE_SEC = 21600;               // 6h, CacheService maximum
+var UPLOAD_ID_DESC_PREFIX = "dealerscan-upload:";
 
 function uploadPhoto(e) {
   try {
-    var folderId = "", photoData = "", fileName = "scan.jpg";
+    var folderId = "", photoData = "", uploadId = "", isRetry = false;
     if (e.postData && e.postData.contents) {
       var p = JSON.parse(e.postData.contents);
       folderId = p.folderId || p.folderid || "";
       photoData = p.photodata || p.photoData || "";
-      fileName = p.filename || p.fileName || "scan.jpg";
+      uploadId = String(p.uploadId || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+      isRetry = p.retry === true || p.retry === "true";
     }
     if (!folderId) return ContentService.createTextOutput("ERROR: no folderId");
+    if (!photoData) return ContentService.createTextOutput("ERROR: no photoData");
     if (photoData.indexOf(",") > -1) photoData = photoData.split(",")[1];
-    var folder = DriveApp.getFolderById(folderId);
+
+    var cache = CacheService.getScriptCache();
+    var cacheKey = uploadId ? "up_" + uploadId : null;
+    if (cacheKey && cache.get(cacheKey)) return ContentService.createTextOutput("OK");
+
+    // Heavy work (decode + folder lookup) happens BEFORE taking the lock.
     var decoded = Utilities.base64Decode(photoData);
-    var ef = folder.getFiles(), dc = 0;
-    while (ef.hasNext()) { ef.next(); dc++; }
-    var sfn = fileName;
-    try { sfn = detectDocumentType(photoData, dc + 1) + ".jpg"; }
-    catch(err) { sfn = "Doc " + (dc + 1) + ".jpg"; }
-    var bn = sfn.replace(/\.jpg$/i, ""), fn = sfn, cnt = 2;
-    while (folder.getFilesByName(fn).hasNext()) { fn = bn + " " + cnt + ".jpg"; cnt++; }
-    folder.createFile(Utilities.newBlob(decoded, "image/jpeg", fn));
-    incrementPhotoCount(folderId);
-    logScanComplete(folderId);
+    var folder = DriveApp.getFolderById(folderId);
+
+    // Lock covers only "pick a name + create the file" so two photos
+    // landing at the same moment can't both become "Doc 3".
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000); // throws after 30s -> ERROR -> PWA retries later
+    try {
+      if (cacheKey && cache.get(cacheKey)) return ContentService.createTextOutput("OK");
+
+      var count = 0, taken = {}, files = folder.getFiles();
+      while (files.hasNext()) {
+        var f = files.next();
+        count++;
+        taken[f.getName()] = true;
+        if (isRetry && uploadId && f.getDescription() === UPLOAD_ID_DESC_PREFIX + uploadId) {
+          cache.put(cacheKey, f.getId(), UPLOAD_ID_CACHE_SEC);
+          return ContentService.createTextOutput("OK"); // already saved earlier
+        }
+      }
+      var n = count + 1;
+      while (taken["Doc " + n + ".jpg"]) n++;
+      var file = folder.createFile(Utilities.newBlob(decoded, "image/jpeg", "Doc " + n + ".jpg"));
+      if (uploadId) {
+        try { file.setDescription(UPLOAD_ID_DESC_PREFIX + uploadId); } catch (descErr) {}
+        cache.put(cacheKey, file.getId(), UPLOAD_ID_CACHE_SEC);
+      }
+    } finally {
+      lock.releaseLock();
+    }
+
+    // The photo is safe in Drive at this point. Logging problems must NOT
+    // turn into ERROR, or the PWA would upload the same photo again.
+    try { recordPhotoUploaded_(folderId); }
+    catch (logErr) { console.warn("ScanLog update failed for " + folderId + ": " + logErr); }
+
     return ContentService.createTextOutput("OK");
   } catch(err) { return ContentService.createTextOutput("ERROR: " + err.toString()); }
 }
@@ -832,30 +852,34 @@ function logScanStart(customerName, salesName, folderId) {
   ]);
 }
 
-function logScanComplete(folderId) {
-  var ss = getHistorySpreadsheet(), sheet = ss.getSheetByName("ScanLog");
+// Bump the photo count on the newest ScanLog row for this folder and mark
+// it Complete — one search + one read + one write, instead of reading the
+// whole sheet twice. Short lock so two photos finishing together can't
+// both read "1" and both write "2".
+function recordPhotoUploaded_(folderId) {
+  var sheet = getHistorySpreadsheet().getSheetByName("ScanLog");
   if (!sheet) return;
-  var data = sheet.getDataRange().getValues();
-  for (var i = data.length - 1; i >= 0; i--) {
-    if (data[i][2] === folderId) {
-      var ms = new Date().getTime() - data[i][3], sec = Math.floor(ms / 1000);
-      sheet.getRange(i + 1, 7).setValue(new Date().toLocaleTimeString());
-      sheet.getRange(i + 1, 9).setValue(Math.floor(sec / 60) + "m " + (sec % 60) + "s");
-      sheet.getRange(i + 1, 10).setValue("Complete");
-      break;
-    }
-  }
-}
-
-function incrementPhotoCount(folderId) {
-  var ss = getHistorySpreadsheet(), sheet = ss.getSheetByName("ScanLog");
-  if (!sheet) return;
-  var data = sheet.getDataRange().getValues();
-  for (var i = data.length - 1; i >= 0; i--) {
-    if (data[i][2] === folderId) {
-      sheet.getRange(i + 1, 8).setValue((sheet.getRange(i + 1, 8).getValue() || 0) + 1);
-      break;
-    }
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 1) return;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    var matches = sheet.getRange(1, 3, lastRow, 1)
+      .createTextFinder(folderId).matchEntireCell(true).findAll();
+    if (!matches.length) return;
+    var row = matches[matches.length - 1].getRow();
+    var vals = sheet.getRange(row, 4, 1, 5).getValues()[0]; // cols D..H
+    var startedAt = typeof vals[0] === "number" ? vals[0] : new Date().getTime();
+    var photoCount = (Number(vals[4]) || 0) + 1;
+    var sec = Math.max(0, Math.floor((new Date().getTime() - startedAt) / 1000));
+    sheet.getRange(row, 7, 1, 4).setValues([[
+      new Date().toLocaleTimeString(),                    // G Time End
+      photoCount,                                         // H Photo Count
+      Math.floor(sec / 60) + "m " + (sec % 60) + "s",     // I Duration
+      "Complete"                                          // J Status
+    ]]);
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -925,7 +949,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.13"); }
+function getVersion(e) { return ContentService.createTextOutput("1.15"); }
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {

@@ -49,7 +49,9 @@ export function renderDone() {
     const n = _session.photos.filter((p) => p.status === "success").length;
     if (heading) heading.textContent = "All set";
     if (summary) {
-      summary.textContent = `Uploaded ${n} ${n === 1 ? "photo" : "photos"} for ${customer}.`;
+      // Photos are saved on the phone and uploading in the background, so
+      // don't claim they're already in Drive. Home shows "Synced" when done.
+      summary.textContent = `${n} ${n === 1 ? "photo" : "photos"} for ${customer} saved and uploading. Safe to close the app.`;
     }
     if (checkIcon) checkIcon.classList.remove("done-check-queued");
   }
