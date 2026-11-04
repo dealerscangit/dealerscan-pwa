@@ -1,6 +1,11 @@
 // ============================================================
 // DealerScan / Scan Docs — Apps Script
-// Last updated: 2026-11-03 — license scan test relay (backend 1.16)
+// Last updated: 2026-11-03 — license scan test relay (backend 1.17)
+//
+// CHANGES IN 1.17:
+//   1. relayGet reads the session from ?session= instead of ?sid=. Apps Script
+//      reserves the query parameter name "sid", so requests using it never
+//      reached the script. relayPut is unchanged (session is in the POST body).
 //
 // CHANGES IN 1.16 (license scan test):
 //   1. NEW endpoints `relayPut` (POST) and `relayGet` (GET). A tiny mailbox
@@ -960,7 +965,7 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.16"); }
+function getVersion(e) { return ContentService.createTextOutput("1.17"); }
 
 // ────────── LICENSE SCAN TEST RELAY (1.16) ──────────
 // A short-lived mailbox between the phone test page and the desktop test
@@ -988,7 +993,7 @@ function relayPut(data) {
 
 function relayGet(e) {
   try {
-    var sid = String((e.parameter && e.parameter.sid) || "");
+    var sid = String((e.parameter && e.parameter.session) || ""); // NOT "sid": reserved by Apps Script
     var n = parseInt(e.parameter && e.parameter.n, 10);
     if (!RELAY_SID_RE.test(sid) || !(n >= 1 && n <= 50)) return json({ ok: false, error: "bad_request" });
     var cache = CacheService.getScriptCache();
