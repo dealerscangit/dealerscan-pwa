@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#0d2654" />
+  <title>DealerScan · License scan test</title>
+  <style>
+    :root {
+      --bg: linear-gradient(170deg, #1a5296 0%, #163f7a 45%, #112f63 80%, #0d2654 100%);
+      --surface: rgba(255,255,255,0.06); --border: rgba(255,255,255,0.14);
+      --muted: rgba(255,255,255,0.72); --red: #e94560; --red2: #c73652;
+      --green: #34d399; --amber: #fbbf24; --blue: #9cc0fa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: #0d2654; background-image: var(--bg); background-attachment: fixed; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; font-size: 15px; line-height: 1.4;
+      -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+    [hidden] { display: none !important; }
+    .screen { min-height: 100%; display: flex; flex-direction: column; gap: 14px;
+      padding: calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 18px); }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+    .sub { color: var(--muted); font-size: 14px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 99px; background: rgba(52,211,153,0.16); color: #6ee7b7; }
+    .chip.test { background: rgba(251,191,36,0.15); color: #fde68a; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; }
+    .btn { width: 100%; min-height: 54px; border-radius: 14px; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; border: none; color: #fff; }
+    .btn-primary { background: linear-gradient(135deg, var(--red), var(--red2)); box-shadow: 0 8px 20px rgba(233,69,96,0.35); }
+    .btn-ghost { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.22); }
+    .btn-big { min-height: 84px; flex-direction: column; gap: 2px; text-align: center; }
+    .btn-big small { font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.8); }
+    .privacy { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--muted); }
+    .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid rgba(255,255,255,0.08); font-size: 14px; }
+    .row:first-child { border-top: none; }
+    .row .k { color: var(--muted); flex-shrink: 0; }
+    .row .v { font-weight: 600; text-align: right; word-break: break-word; font-variant-numeric: tabular-nums; }
+    .row .v.none { color: rgba(255,255,255,0.4); font-weight: 400; }
+    .label { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.62); margin-bottom: 6px; }
+    .log-item { display: flex; justify-content: space-between; font-size: 13.5px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+    .log-item:first-child { border-top: none; }
+    details summary { cursor: pointer; color: var(--blue); font-size: 13px; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+    pre { white-space: pre-wrap; font-size: 11.5px; color: rgba(255,255,255,0.8); margin-top: 6px; max-height: 240px; overflow: auto; }
+    .spinner { width: 46px; height: 46px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.15); border-top-color: #fff; animation: spin 0.9s linear infinite; margin: 0 auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Camera */
+    #screen-camera { position: fixed; inset: 0; padding: 0; background: #000; gap: 0; }
+    #cam-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #cam-frame { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: 88vw; max-width: 520px; aspect-ratio: 1.586; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(4,7,13,0.6); border: 3px dashed rgba(255,255,255,0.7); transition: border-color .15s; }
+    #cam-frame.square { aspect-ratio: 1; width: 64vw; }
+    #cam-frame.ok { border: 3px solid var(--green); box-shadow: 0 0 0 9999px rgba(4,7,13,0.6), 0 0 24px rgba(52,211,153,0.5); }
+    #cam-frame.warn { border: 3px solid var(--amber); }
+    #cam-frame-label { position: absolute; left: 0; right: 0; top: -34px; text-align: center; font-size: 14px; font-weight: 600; }
+    .cam-top { position: absolute; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top) + 12px) 14px 26px; display: flex; align-items: center; gap: 10px; background: linear-gradient(180deg, rgba(0,0,0,0.75), rgba(0,0,0,0)); }
+    .cam-top b { font-size: 16px; }
+    .cam-top .x { width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 20px; }
+    #cam-hint { position: absolute; left: 50%; transform: translateX(-50%); top: calc(42% + 30vw + 12px); white-space: nowrap; padding: 10px 16px; border-radius: 99px; font-size: 15px; font-weight: 700; background: rgba(15,23,42,0.88); border: 1px solid rgba(255,255,255,0.2); }
+    #cam-hint.ok { background: rgba(6,78,59,0.92); border-color: var(--green); }
+    #cam-hint.warn { background: rgba(120,53,15,0.92); border-color: var(--amber); }
+    .cam-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(env(safe-area-inset-bottom) + 18px); background: linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0)); display: flex; flex-direction: column; gap: 12px; }
+    .checks { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; }
+    .chk { text-align: center; padding: 7px 4px; border-radius: 12px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.14); font-size: 12px; font-weight: 600; }
+    .chk.ok { border-color: var(--green); color: #a7f3d0; }
+    .chk.bad { border-color: var(--amber); color: #fde68a; }
+    .chk small { display: block; font-size: 10.5px; font-weight: 500; opacity: 0.75; font-variant-numeric: tabular-nums; }
+    .shutter-row { display: flex; align-items: center; gap: 14px; }
+    #cam-status { flex: 1; font-size: 13.5px; color: rgba(255,255,255,0.85); }
+    #cam-shutter { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #fff; background: transparent; padding: 4px; flex-shrink: 0; }
+    #cam-shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: #fff; }
+  </style>
+</head>
+<body>
+  <!-- No session: opened from the dev button, not from the desktop QR -->
+  <section class="screen" id="screen-nosession" hidden>
+    <span class="chip test">Dev test · not part of the app</span>
+    <h1>License scan test</h1>
+    <p class="sub">Open the DealerScan Link test page on your computer. It shows a QR code. Scan it with your iPhone Camera app, or with the button below.</p>
+    <button class="btn btn-primary" id="btn-scan-qr" type="button">Scan the desktop QR code</button>
+    <a class="btn btn-ghost" href="./" style="text-decoration: none">Back to DealerScan</a>
+  </section>
+
+  <!-- Linked: pick front or back -->
+  <section class="screen" id="screen-home" hidden>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+      <h1>License scan test</h1>
+      <span class="chip" id="link-chip">Linked</span>
+    </div>
+    <p class="sub">Scan the front and the back. Each result goes to your computer so you can compare them.</p>
+    <button class="btn btn-primary btn-big" id="btn-front" type="button">Scan the front<small>Reads the printed text</small></button>
+    <button class="btn btn-ghost btn-big" id="btn-back" type="button">Scan the back<small>Reads the barcode</small></button>
+    <div class="card">
+      <div class="label">Sent to your computer</div>
+      <div id="sent-log"><div class="log-item"><span class="sub">Nothing yet</span></div></div>
+    </div>
+    <p class="privacy">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+      <span>Photos stay on this phone. Only the text that was read is sent, encrypted with a key from the QR code. The server in between can't read it and deletes it within 10 minutes.</span>
+    </p>
+  </section>
+
+  <!-- Camera -->
+  <section class="screen" id="screen-camera" hidden>
+    <video id="cam-video" playsinline muted autoplay></video>
+    <div id="cam-frame"><div id="cam-frame-label">Line up the license inside the frame</div></div>
+    <div class="cam-top">
+      <button class="x" id="cam-close" type="button" aria-label="Close camera">✕</button>
+      <div style="display: flex; flex-direction: column"><b id="cam-title">Front of license</b><span class="sub" id="cam-sub" style="font-size: 12.5px">Auto-capture is on</span></div>
+    </div>
+    <div id="cam-hint">Starting camera…</div>
+    <div class="cam-bottom">
+      <div class="checks">
+        <div class="chk" id="chk-sharp">Sharp<small>—</small></div>
+        <div class="chk" id="chk-bright">Bright<small>—</small></div>
+        <div class="chk" id="chk-glare">No glare<small>—</small></div>
+      </div>
+      <div class="shutter-row">
+        <div id="cam-status">Hold the card flat, fill the frame.</div>
+        <button id="cam-shutter" type="button" aria-label="Take photo manually"><span></span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Working -->
+  <section class="screen" id="screen-working" hidden style="justify-content: center; text-align: center">
+    <div class="spinner"></div>
+    <h1 id="working-title">Reading…</h1>
+    <p class="sub" id="working-sub"></p>
+  </section>
+
+  <!-- Result -->
+  <section class="screen" id="screen-result" hidden>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+      <h1 id="result-title">Front result</h1>
+      <span class="chip" id="result-chip">Sent ✓</span>
+    </div>
+    <p class="sub" id="result-meta"></p>
+    <div class="card" id="result-fields"></div>
+    <details id="result-raw-wrap" class="card" hidden>
+      <summary>Show raw text the phone read</summary>
+      <pre id="result-raw"></pre>
+    </details>
+    <button class="btn btn-ghost" id="btn-again" type="button">Scan again</button>
+    <button class="btn btn-primary" id="btn-done" type="button">Done</button>
+  </section>
+
+  <script type="module" src="./scripts/scanTest/main.js?v=1"></script>
+</body>
+</html>

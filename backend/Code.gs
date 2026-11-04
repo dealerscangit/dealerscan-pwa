@@ -1,6 +1,15 @@
 // ============================================================
 // DealerScan / Scan Docs — Apps Script
-// Last updated: 2026-10-27 — upload speed fix (backend 1.15)
+// Last updated: 2026-11-03 — license scan test relay (backend 1.16)
+//
+// CHANGES IN 1.16 (license scan test):
+//   1. NEW endpoints `relayPut` (POST) and `relayGet` (GET). A tiny mailbox
+//      that passes license-scan TEST results from the phone test page
+//      (dealerscan.live/scan-test.html) to the desktop test extension.
+//      The phone ENCRYPTS everything before sending; the key lives only in
+//      the QR code, so this script never sees readable data. Messages are
+//      held in CacheService for 10 minutes max and deleted when read.
+//      Nothing is written to Drive, Sheets, or logs. Nothing else changed.
 //
 // CHANGES IN 1.15 (upload speed / offline-queue fix):
 //   1. REMOVED Google Vision document detection from uploadPhoto. Every
@@ -82,6 +91,7 @@ function doGet(e) {
   if (action === "hideCustomer")    return hideCustomer(e);     // ← NEW (PWA swipe-to-remove)
   if (action === "unhideCustomer")  return unhideCustomer(e);   // ← NEW (PWA swipe undo)
   if (action === "getVersion")      return getVersion(e);
+  if (action === "relayGet")        return relayGet(e);        // ← 1.16 license scan test
   if (action === "getConfig")       return getDashConfigHttp(e);
   if (action === "saveConfig")      return saveDashConfig(e);
   if (action === "getFolders")      return getDashFolders(e);
@@ -123,6 +133,7 @@ function doPost(e) {
     }
   } catch(err) {}
   if (action === "uploadPhoto") return uploadPhoto(e);
+  if (action === "relayPut")    return relayPut(data);   // ← 1.16 license scan test
   if (action === "logUpload")   return json(logUpload(data));
   if (action === "saveConfig")  return saveDashConfigPost(e);
   if (action === "writeSystemFile") return writeSystemFile(e);  // ← system JSON file editor
@@ -949,7 +960,46 @@ function getDealerScanStats(e) {
   } catch(err) { return jsonError(err); }
 }
 
-function getVersion(e) { return ContentService.createTextOutput("1.15"); }
+function getVersion(e) { return ContentService.createTextOutput("1.16"); }
+
+// ────────── LICENSE SCAN TEST RELAY (1.16) ──────────
+// A short-lived mailbox between the phone test page and the desktop test
+// extension. Payloads are AES-GCM ciphertext made on the phone; the key is
+// only in the QR code (URL #fragment), never sent here. Each message lives
+// at most RELAY_TTL_SEC and is deleted as soon as the desktop reads it.
+var RELAY_TTL_SEC = 600;
+var RELAY_SID_RE = /^[A-Za-z0-9_-]{16,64}$/;
+var RELAY_B64_RE = /^[A-Za-z0-9_-]+$/;
+
+function relayPut(data) {
+  try {
+    var sid = String((data && data.sid) || "");
+    var n = parseInt(data && data.n, 10);
+    var iv = String((data && data.iv) || "");
+    var ct = String((data && data.ct) || "");
+    if (!RELAY_SID_RE.test(sid)) return json({ ok: false, error: "bad_sid" });
+    if (!(n >= 1 && n <= 50)) return json({ ok: false, error: "bad_n" });
+    if (!RELAY_B64_RE.test(iv) || iv.length > 64) return json({ ok: false, error: "bad_iv" });
+    if (!RELAY_B64_RE.test(ct) || ct.length > 90000) return json({ ok: false, error: "bad_ct" });
+    CacheService.getScriptCache().put("relay_" + sid + "_" + n, JSON.stringify({ iv: iv, ct: ct }), RELAY_TTL_SEC);
+    return json({ ok: true });
+  } catch (err) { return json({ ok: false, error: "relay_put_failed" }); }
+}
+
+function relayGet(e) {
+  try {
+    var sid = String((e.parameter && e.parameter.sid) || "");
+    var n = parseInt(e.parameter && e.parameter.n, 10);
+    if (!RELAY_SID_RE.test(sid) || !(n >= 1 && n <= 50)) return json({ ok: false, error: "bad_request" });
+    var cache = CacheService.getScriptCache();
+    var key = "relay_" + sid + "_" + n;
+    var raw = cache.get(key);
+    if (!raw) return json({ ok: true, found: false });
+    cache.remove(key);
+    var msg = JSON.parse(raw);
+    return json({ ok: true, found: true, iv: msg.iv, ct: msg.ct });
+  } catch (err) { return json({ ok: false, error: "relay_get_failed" }); }
+}
 
 // ────────── UPLOAD LOG ──────────
 function logUpload(data) {
