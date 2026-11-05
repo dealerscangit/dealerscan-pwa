@@ -70,6 +70,26 @@
     #cam-status { flex: 1; font-size: 13.5px; color: rgba(255,255,255,0.85); }
     #cam-shutter { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #fff; background: transparent; padding: 4px; flex-shrink: 0; }
     #cam-shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: #fff; }
+    .checks:has(#chk-edges:not([hidden])) { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    #cam-hold-track { position: absolute; left: 12%; right: 12%; bottom: -16px; height: 5px; border-radius: 99px; background: rgba(255,255,255,0.18); overflow: hidden; }
+    #cam-hold { height: 100%; width: 0; background: var(--green); transition: width .12s linear; }
+    #cam-frame.square #cam-hold-track { display: none; }
+    .pill { min-height: 36px; padding: 0 12px; border-radius: 99px; border: 1px solid rgba(52,211,153,0.6); background: rgba(6,78,59,0.7); color: #a7f3d0; font: inherit; font-size: 13px; font-weight: 700; }
+    .pill.off { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: #fff; }
+    #cam-flip { position: absolute; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 74px); display: flex; flex-direction: column; align-items: center; padding: 10px 18px; border-radius: 14px; background: rgba(6,78,59,0.92); border: 1px solid var(--green); text-align: center; font-size: 14px; white-space: nowrap; }
+    #cam-flip b { font-size: 16px; }
+    .btn-flow { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.22); position: relative; }
+    .btn-flow.picked { background: linear-gradient(135deg, var(--red), var(--red2)); border-color: transparent; box-shadow: 0 8px 20px rgba(233,69,96,0.35); }
+    .btn-flow .tag { display: none; position: absolute; top: 8px; right: 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 7px; border-radius: 99px; background: rgba(0,0,0,0.22); }
+    .btn-flow.picked .tag { display: block; }
+    .link { background: none; border: none; color: var(--blue); font: inherit; font-size: 13.5px; font-weight: 600; min-height: 40px; cursor: pointer; }
+    #result-photo, #result-ocr-photo { display: block; width: 100%; border-radius: 10px; margin-top: 4px; }
+    .card.fix { border-color: rgba(251,191,36,0.5); background: rgba(251,191,36,0.08); color: #fde68a; font-size: 14px; }
+    .row.head { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+    .row.head .v { color: rgba(255,255,255,0.6); }
+    .row.cols2 .v, .row.head .v { flex: 1; }
+    .row.cols2 .k { width: 30%; }
+    .row .v.diff { color: #fde68a; }
   </style>
 </head>
 <body>
@@ -88,9 +108,10 @@
       <h1>License scan test</h1>
       <span class="chip" id="link-chip">Linked</span>
     </div>
-    <p class="sub">Scan the front and the back. Each result goes to your computer so you can compare them.</p>
-    <button class="btn btn-primary btn-big" id="btn-front" type="button">Scan the front<small>Reads the printed text</small></button>
-    <button class="btn btn-ghost btn-big" id="btn-back" type="button">Scan the back<small>Reads the barcode</small></button>
+    <p class="sub">Pick how to scan the license. Your pick is remembered for next time.</p>
+    <button class="btn btn-flow btn-big" id="btn-flow-front" type="button"><span class="tag">Last used</span>Front only<small>One photo · reads the printed text</small></button>
+    <button class="btn btn-flow btn-big" id="btn-flow-both" type="button"><span class="tag">Last used</span>Front + back<small>Then flip it · the barcode fills every field</small></button>
+    <button class="link" id="btn-back-only" type="button">Dev: test the back only</button>
     <div class="card">
       <div class="label">Sent to your computer</div>
       <div id="sent-log"><div class="log-item"><span class="sub">Nothing yet</span></div></div>
@@ -104,14 +125,17 @@
   <!-- Camera -->
   <section class="screen" id="screen-camera" hidden>
     <video id="cam-video" playsinline muted autoplay></video>
-    <div id="cam-frame"><div id="cam-frame-label">Line up the license inside the frame</div></div>
+    <div id="cam-frame"><div id="cam-frame-label">Line up the license inside the frame</div><div id="cam-hold-track"><div id="cam-hold"></div></div></div>
     <div class="cam-top">
       <button class="x" id="cam-close" type="button" aria-label="Close camera">✕</button>
-      <div style="display: flex; flex-direction: column"><b id="cam-title">Front of license</b><span class="sub" id="cam-sub" style="font-size: 12.5px">Auto-capture is on</span></div>
+      <div style="display: flex; flex-direction: column; flex: 1"><b id="cam-title">Front of license</b><span class="sub" id="cam-sub" style="font-size: 12.5px">Auto-capture is on</span></div>
+      <button class="pill" id="cam-auto" type="button">Auto: on</button>
     </div>
+    <div id="cam-flip" hidden><b>Front done ✓</b><span>Now flip the card over</span></div>
     <div id="cam-hint">Starting camera…</div>
     <div class="cam-bottom">
       <div class="checks">
+        <div class="chk" id="chk-edges">Card<small>—</small></div>
         <div class="chk" id="chk-sharp">Sharp<small>—</small></div>
         <div class="chk" id="chk-bright">Bright<small>—</small></div>
         <div class="chk" id="chk-glare">No glare<small>—</small></div>
@@ -120,6 +144,7 @@
         <div id="cam-status">Hold the card flat, fill the frame.</div>
         <button id="cam-shutter" type="button" aria-label="Take photo manually"><span></span></button>
       </div>
+      <button class="btn btn-ghost" id="cam-skip" type="button" hidden style="min-height: 46px">Skip the back</button>
     </div>
   </section>
 
@@ -136,7 +161,20 @@
       <h1 id="result-title">Front result</h1>
       <span class="chip" id="result-chip">Sent ✓</span>
     </div>
-    <p class="sub" id="result-meta"></p>
+    <p class="sub" id="result-meta" style="white-space: pre-line"></p>
+    <div class="card" id="result-photo-wrap" hidden>
+      <div class="label">Photo the phone took</div>
+      <img id="result-photo" alt="Front photo preview" />
+      <p class="sub" id="result-photo-q" style="font-size: 12.5px; margin-top: 6px"></p>
+      <details id="result-ocr-wrap" style="margin-top: 4px">
+        <summary>Show what the text reader saw</summary>
+        <img id="result-ocr-photo" alt="Image given to the text reader" />
+      </details>
+    </div>
+    <div class="card fix" id="result-fix" hidden>
+      <span id="result-fix-text">The front read missed some fields.</span>
+      <button class="btn btn-ghost" id="btn-fix-back" type="button" style="min-height: 46px; margin-top: 10px">Scan the back to fill them</button>
+    </div>
     <div class="card" id="result-fields"></div>
     <details id="result-raw-wrap" class="card" hidden>
       <summary>Show raw text the phone read</summary>
@@ -146,6 +184,6 @@
     <button class="btn btn-primary" id="btn-done" type="button">Done</button>
   </section>
 
-  <script type="module" src="./scripts/scanTest/main.js?v=1"></script>
+  <script type="module" src="./scripts/scanTest/main.js?v=2"></script>
 </body>
 </html>
