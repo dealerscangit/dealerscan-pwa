@@ -14,3 +14,6 @@ Thumbs.db
 # Build outputs (none yet, but reserved)
 dist/
 build/
+
+# Real user registry lives in Google Drive. Never commit it.
+backend/_DealerScan_Users.json

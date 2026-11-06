@@ -1346,7 +1346,7 @@ function getDashConfigWithUsers() {
 // defines who can sign in, what role they have, and what they can see.
 //
 // Roles + permissions are defined in the JSON itself (not hardcoded here)
-// so we can edit them without code changes. See backend/_DealerScan_Users.json
+// so we can edit them without code changes. See backend/_DealerScan_Users.sample.json
 // in the PWA repo for the canonical shape.
 //
 // Security note: ALL of these endpoints will require role=dev verification

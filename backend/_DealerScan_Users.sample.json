@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-27T00:00:00.000Z",
+  "roles": {
+    "dev": {
+      "label": "Dev",
+      "description": "Full access. Can manage users, view system events, see all data.",
+      "permissions": [
+        "scan",
+        "viewOwnData"
+      ]
+    },
+    "manager": {
+      "label": "Manager",
+      "description": "Sees all salespeople data and dashboards. Cannot edit user access.",
+      "permissions": [
+        "scan",
+        "viewOwnData"
+      ]
+    },
+    "sales": {
+      "label": "Salesperson",
+      "description": "Standard scan access. Sees own data only.",
+      "permissions": [
+        "scan",
+        "viewOwnData"
+      ]
+    }
+  },
+  "users": [
+    {
+      "email": "dev@example.com",
+      "name": "Sample Dev",
+      "role": "dev",
+      "active": true
+    },
+    {
+      "email": "manager@example.com",
+      "name": "Sample Manager",
+      "role": "manager",
+      "active": true
+    },
+    {
+      "email": "salesperson@example.com",
+      "name": "Sample Salesperson",
+      "role": "sales",
+      "active": true
+    }
+  ],
+  "_note": "Sample only. The real registry is _DealerScan_Users.json in the DealerScan system folder in Google Drive. Never commit the real one."
+}
