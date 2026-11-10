@@ -77,57 +77,24 @@ export async function createCustomerFolder(customerName, salesName, isNew) {
  * @param {string} [opts.uploadId] - unique per photo; backend ignores re-sends
  * @param {boolean} [opts.retry]   - true when re-sending from the queue
  */
-// The backend answers "OK" only after the photo is saved in Drive, so a
-// resolved call means the photo is really there.
-// opts.onProgress(fraction 0..1) reports how much of the photo has been sent;
-// when given, the upload uses XHR (fetch can't report upload progress).
 export async function uploadPhoto(folderId, photoBase64, filename = "scan.jpg", opts = {}) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "uploadPhoto");
   _attachAuth(url);
-  const body = JSON.stringify({
-    folderId,
-    photoData: photoBase64,
-    filename,
-    uploadId: opts.uploadId || "",
-    retry: !!opts.retry,
-  });
-
-  let txt;
-  if (typeof opts.onProgress === "function" && typeof XMLHttpRequest !== "undefined") {
-    txt = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", url.toString());
-      // Apps Script doPost is finicky with Content-Type; text/plain avoids CORS preflight
-      xhr.setRequestHeader("Content-Type", "text/plain;charset=utf-8");
-      xhr.timeout = UPLOAD_TIMEOUT_MS;
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable && e.total > 0) {
-          try { opts.onProgress(Math.min(1, e.loaded / e.total)); } catch {}
-        }
-      };
-      xhr.upload.onload = () => { try { opts.onProgress(1); } catch {} };
-      xhr.onload = () => {
-        if (xhr.status < 200 || xhr.status >= 300) {
-          reject(new Error(`uploadPhoto HTTP ${xhr.status}`));
-        } else {
-          resolve(String(xhr.responseText || "").trim());
-        }
-      };
-      xhr.onerror = () => reject(new Error("uploadPhoto network error"));
-      xhr.ontimeout = () => reject(new Error("uploadPhoto timed out"));
-      xhr.onabort = () => reject(new Error("uploadPhoto aborted"));
-      xhr.send(body);
-    });
-  } else {
-    const res = await fetchWithTimeout(url.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body,
-    }, UPLOAD_TIMEOUT_MS);
-    if (!res.ok) throw new Error(`uploadPhoto HTTP ${res.status}`);
-    txt = (await res.text()).trim();
-  }
+  const res = await fetchWithTimeout(url.toString(), {
+    method: "POST",
+    // Apps Script doPost is finicky with Content-Type; text/plain avoids CORS preflight
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      folderId,
+      photoData: photoBase64,
+      filename,
+      uploadId: opts.uploadId || "",
+      retry: !!opts.retry,
+    }),
+  }, UPLOAD_TIMEOUT_MS);
+  if (!res.ok) throw new Error(`uploadPhoto HTTP ${res.status}`);
+  const txt = (await res.text()).trim();
   if (!txt.startsWith("OK")) throw new Error(`uploadPhoto backend: ${txt}`);
   return txt;
 }

@@ -10,7 +10,7 @@
 // + filename. Pending/back-stack cards are dimmed.
 
 import { getCurrentSalesperson } from "../currentUser.js";
-import { createCustomerFolder, listFolderFiles } from "../apiClient.js";
+import { createCustomerFolder } from "../apiClient.js";
 import { enqueue as enqueueOffline, newUploadId } from "../offlineQueue.js";
 import { reportError } from "../errorReporter.js";
 import { compressDataUrl } from "../imageCompress.js";
@@ -19,10 +19,6 @@ import { invalidate as invalidateCache } from "../dataCache.js";
 let _showScreen = null;
 let _session = null;
 let _isUploading = false;
-
-// Live upload tracking for the scan on screen (see trackUpload()).
-let _track = null;
-let _wakeLock = null;
 
 // Tracks which photo is currently the front of the deck.
 // Photos at index < _activeIndex are completed (off-stage).
@@ -89,7 +85,7 @@ export async function renderUpload() {
     );
     const folderId = await folderPromise;
 
-    const itemId = await enqueueOffline({
+    await enqueueOffline({
       salesName: sp,
       customerName: _session.customerName,
       isNewCustomer: !!_session.isNewCustomer,
@@ -107,20 +103,16 @@ export async function renderUpload() {
       return;
     }
 
-    // Start uploading now and STAY on this screen until the backend has
-    // confirmed every photo is saved in Drive and the folder check passes.
-    // (Before 2026-11-10 this screen showed green checks right away and the
-    // done screen said "safe to close", but iOS pauses the app when it's
-    // closed, so uploads stalled.)
+    // Start uploading now (app.js runs the queue and shows progress + a
+    // "Synced" toast). Safe to call while another drain is running — that
+    // pass picks the new scan up.
+    window.dispatchEvent(new CustomEvent("dealerscan:drain"));
+
     _session.uploadStatus = "sending";
-    const result = await trackUpload(itemId, toSend, folderId, Date.now());
+    animateAllToSuccess();
+    await sleep(700);
     _isUploading = false;
-    if (result === "verified" || result === "saved") {
-      _session.uploadStatus = result;
-      _showScreen("done");
-    }
-    // "failed" and "later" leave the user on this screen with choices,
-    // or they chose to go home; nothing else to do here.
+    _showScreen("done");
   } catch (err) {
     // Only reached if the phone couldn't save the scan at all (e.g. storage
     // blocked). Photos are still in the session, so Retry is safe.
@@ -142,7 +134,7 @@ export async function renderUpload() {
 
 function paintSummary() {
   const summary = document.getElementById("upload-summary");
-  if (!summary || _track) return;
+  if (!summary) return;
 
   const photos = _session.photos || [];
   const done = photos.filter((p) => p.status === "success").length;
@@ -192,18 +184,7 @@ function updateActiveCard() {
     iconWrap.innerHTML = statusIconHtml(photo.status);
   }
   const fname = card.querySelector(".deck-card-filename");
-  if (fname) fname.textContent = cardStatusText(photo) || photo.filename;
-}
-
-function cardStatusText(photo) {
-  switch (photo.progressState) {
-    case "waiting": return "Waiting…";
-    case "sending": return photo.progress > 0 ? `Sending… ${Math.round(photo.progress * 100)}%` : "Sending…";
-    case "saving": return "Saving to Drive…";
-    case "saved": return "In Drive";
-    case "failed": return "Didn't go through";
-    default: return "";
-  }
+  if (fname) fname.textContent = photo.filename;
 }
 
 function buildCardElement(photo, pos, indexInPhotos) {
@@ -240,7 +221,7 @@ function buildCardElement(photo, pos, indexInPhotos) {
 
   const fname = document.createElement("div");
   fname.className = "deck-card-filename";
-  fname.textContent = cardStatusText(photo) || photo.filename;
+  fname.textContent = photo.filename;
   overlay.appendChild(fname);
 
   card.appendChild(overlay);
@@ -312,310 +293,13 @@ function addRetryAffordance() {
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-
-
-// ─────────────────────────────────────────────────────────────
-// Live, verified upload progress
-// ─────────────────────────────────────────────────────────────
-
-// Follow one queued scan until every photo is confirmed in Drive.
-// Resolves to "verified" (saved + folder check passed), "saved" (saved, but
-// the folder check couldn't run), or "later" (user chose to leave).
-// On failure it shows retry choices and keeps waiting.
-function trackUpload(itemId, photos, folderId, startedAt) {
-  return new Promise((resolve) => {
-    const n = photos.length;
-    const t = {
-      itemId, photos, folderId, startedAt, resolve,
-      state: photos.map(() => ({ state: "waiting", fraction: 0 })),
-      wasHidden: false, failed: false, finished: false,
-    };
-    _track = t;
-    photos.forEach((p) => { p.status = "active"; p.progressState = "waiting"; p.progress = 0; });
-    _activeIndex = 0;
-    ensureProgressUi();
-    paintDeck();
-    paintLive();
-    keepAwake(true);
-
-    t.onPhoto = (e) => {
-      const d = e.detail || {};
-      if (d.itemId !== itemId || d.index == null || !t.state[d.index]) return;
-      t.state[d.index] = { state: d.state, fraction: d.fraction || 0 };
-      const photo = photos[d.index];
-      if (photo) {
-        photo.progressState = d.state;
-        photo.progress = d.fraction || 0;
-        photo.status = d.state === "saved" ? "success" : d.state === "failed" ? "failed" : "active";
-      }
-      advanceDeck();
-      paintLive();
-    };
-    t.onItem = async (e) => {
-      const d = e.detail || {};
-      if (d.itemId !== itemId) return;
-      if (d.state === "uploading") {
-        t.failed = false;
-        hideFailureActions();
-        paintLive();
-      } else if (d.state === "failed") {
-        t.failed = true;
-        paintLive();
-        showFailureActions(navigator.onLine ? "Trying again in 15 seconds. Check your signal if it keeps failing." : "No signal. It'll pick up as soon as you're back online.");
-        clearTimeout(t.retryTimer);
-        if (navigator.onLine) t.retryTimer = setTimeout(forceRetry, 15000);
-      } else if (d.state === "done") {
-        t.folderId = d.folderId || t.folderId;
-        photos.forEach((p, i) => { p.status = "success"; p.progressState = "saved"; t.state[i] = { state: "saved", fraction: 1 }; });
-        advanceDeck();
-        paintLive("verifying");
-        const verified = await verifyInDrive(t.folderId, n, t.startedAt);
-        finish(verified ? "verified" : "saved");
-      }
-    };
-    t.onVisible = () => {
-      if (document.visibilityState === "hidden") { t.wasHidden = true; keepAwake(false); return; }
-      if (t.finished) return;
-      keepAwake(true);
-      if (t.wasHidden) {
-        t.wasHidden = false;
-        // app.js also drains on foreground; this banner tells them why it paused.
-        flashNote("Upload paused while DealerScan was closed. Resuming now…");
-      }
-    };
-
-    t.onOffline = () => {
-      if (t.finished) return;
-      t.failed = true;
-      paintLive();
-      showFailureActions("No signal. It'll pick up as soon as you're back online.");
-    };
-    t.onOnline = () => {
-      if (t.finished) return;
-      hideFailureActions();
-      t.failed = false;
-      paintLive();
-      // app.js drains on "online" too; force it in case this scan is in backoff.
-      forceRetry();
-    };
-    window.addEventListener("offline", t.onOffline);
-    window.addEventListener("online", t.onOnline);
-    window.addEventListener("dealerscan:photo-progress", t.onPhoto);
-    window.addEventListener("dealerscan:item-progress", t.onItem);
-    document.addEventListener("visibilitychange", t.onVisible);
-
-    function finish(result) {
-      if (t.finished) return;
-      t.finished = true;
-      window.removeEventListener("dealerscan:photo-progress", t.onPhoto);
-      window.removeEventListener("dealerscan:item-progress", t.onItem);
-      document.removeEventListener("visibilitychange", t.onVisible);
-      window.removeEventListener("offline", t.onOffline);
-      window.removeEventListener("online", t.onOnline);
-      clearTimeout(t.retryTimer);
-      keepAwake(false);
-      hideFailureActions();
-      if (_track === t) _track = null;
-      if (result === "verified" || result === "saved") {
-        paintLive(result);
-        setTimeout(() => resolve(result), 900);
-      } else {
-        resolve(result);
-      }
-    }
-    t.finish = finish;
-
-    // Kick off the upload. If another pass is already running it picks this
-    // scan up after the one in front of it ("Waiting for an earlier upload").
-    window.dispatchEvent(new CustomEvent("dealerscan:drain"));
+// Optimistic UX: flip every active photo to success and play the check
+// animation, regardless of whether the actual network call has resolved.
+// The real upload promises continue in the background.
+function animateAllToSuccess() {
+  _session.photos.forEach((p) => {
+    if (p.status === "active" || p.status === "pending") p.status = "success";
   });
-}
-
-async function forceRetry() {
-  const t = _track;
-  if (!t || t.finished || !navigator.onLine) return;
-  hideFailureActions();
-  t.failed = false;
-  paintLive();
-  try {
-    const { processQueue } = await import("../offlineQueue.js");
-    await processQueue(null, { force: true });
-  } catch (err) {
-    console.warn("[upload] retry failed:", err);
-  }
-}
-
-// Double-check Drive: the folder should now hold at least `expected` photos
-// added since this scan started. Uses the same read-only folder listing as
-// the dev panel. Returns false if the check couldn't run.
-async function verifyInDrive(folderId, expected, startedAt) {
-  if (!folderId) return false;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await listFolderFiles(folderId);
-      const files = (res && res.files) || [];
-      const since = startedAt - 2 * 60 * 1000; // allow for clock differences
-      const fresh = files.filter((f) => !f.trashed && Date.parse(f.created) >= since);
-      if (fresh.length >= expected) return true;
-    } catch (err) {
-      console.warn("[upload] Drive check failed:", err);
-    }
-    await sleep(1500);
-  }
-  return false;
-}
-
-// Move the front card off the deck once it's saved, so the deck shows the
-// first photo still in flight.
-function advanceDeck() {
-  const photos = _session.photos || [];
-  let moved = false;
-  while (_activeIndex < photos.length && photos[_activeIndex].status === "success") {
-    _activeIndex++;
-    moved = true;
-  }
-  if (moved) paintDeck();
-  else updateActiveCard();
-}
-
-function ensureProgressUi() {
-  const screen = document.querySelector('[data-screen="upload"]');
-  if (!screen || screen.querySelector("#upload-live")) return;
-  const summary = document.getElementById("upload-summary");
-  const wrap = document.createElement("div");
-  wrap.id = "upload-live";
-  wrap.className = "upload-live";
-  wrap.innerHTML =
-    '<div class="upload-bar" role="progressbar" aria-label="Upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
-      '<div class="upload-bar-fill" id="upload-bar-fill"></div>' +
-    '</div>' +
-    '<div class="upload-bar-row"><span id="upload-bar-label">Starting…</span><span id="upload-bar-pct">0%</span></div>' +
-    '<div class="upload-keep-open" id="upload-keep-open">' +
-      '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>' +
-      '<span>Keep DealerScan open until this finishes. Closing the app or locking the phone pauses the upload.</span>' +
-    '</div>' +
-    '<p class="upload-note" id="upload-note" hidden></p>';
-  if (summary && summary.nextSibling) summary.parentNode.insertBefore(wrap, summary.nextSibling);
-  else screen.appendChild(wrap);
-}
-
-// Overall bar: each photo counts 85% for sending and 15% for being saved,
-// so the bar only reaches 100% when Drive has confirmed every photo.
-function paintLive(phase) {
-  const t = _track;
-  const photos = _session.photos || [];
-  const label = document.getElementById("upload-bar-label");
-  const pctEl = document.getElementById("upload-bar-pct");
-  const fill = document.getElementById("upload-bar-fill");
-  const bar = fill && fill.parentElement;
-  const summary = document.getElementById("upload-summary");
-  const keepOpen = document.getElementById("upload-keep-open");
-  const customer = _session.customerName ? ` for ${_session.customerName}` : "";
-
-  const states = t ? t.state : photos.map((p) => ({ state: p.status === "success" ? "saved" : "waiting", fraction: p.status === "success" ? 1 : 0 }));
-  const n = states.length || 1;
-  let units = 0, saved = 0, sending = 0;
-  states.forEach((st) => {
-    if (st.state === "saved") { units += 1; saved++; }
-    else if (st.state === "saving") { units += 0.85; sending++; }
-    else if (st.state === "sending") { units += 0.85 * (st.fraction || 0); sending++; }
-  });
-  let pct = Math.round((units / n) * 100);
-  if (phase !== "verified" && phase !== "saved" && pct >= 100) pct = 99;
-  if (phase === "verified" || phase === "saved") pct = 100;
-
-  if (fill) fill.style.width = pct + "%";
-  if (bar) bar.setAttribute("aria-valuenow", String(pct));
-  if (pctEl) pctEl.textContent = pct + "%";
-  if (fill) fill.classList.toggle("is-done", phase === "verified" || phase === "saved");
-  if (fill) fill.classList.toggle("is-failed", !!(t && t.failed));
-
-  let text;
-  if (phase === "verified") text = `All ${n} in Drive · verified`;
-  else if (phase === "saved") text = `All ${n} saved in Drive`;
-  else if (phase === "verifying") text = "Checking Drive…";
-  else if (t && t.failed) text = `${saved} of ${n} in Drive · some didn't go through`;
-  else if (saved === 0 && sending === 0) text = "Waiting to start…";
-  else text = `${saved} of ${n} in Drive`;
-  if (label) label.textContent = text;
-
-  if (summary) {
-    if (phase === "verified" || phase === "saved") summary.textContent = `Done${customer}.`;
-    else if (t && t.failed) summary.textContent = `Upload stopped${customer}. Your photos are still saved on this phone.`;
-    else summary.textContent = `Uploading ${n} ${n === 1 ? "photo" : "photos"}${customer}…`;
-  }
-  if (keepOpen) keepOpen.hidden = phase === "verified" || phase === "saved" || !!(t && t.failed);
-  updateActiveCard();
-}
-
-function flashNote(text) {
-  const note = document.getElementById("upload-note");
-  if (!note) return;
-  note.textContent = text;
-  note.hidden = false;
-  clearTimeout(flashNote._t);
-  flashNote._t = setTimeout(() => { note.hidden = true; }, 6000);
-}
-
-function showFailureActions(message) {
-  const screen = document.querySelector('[data-screen="upload"]');
-  if (!screen) return;
-  const existing = screen.querySelector("[data-upload-fail] .upload-fail-msg");
-  if (existing) { existing.textContent = message || existing.textContent; return; }
-  const wrap = document.createElement("div");
-  wrap.setAttribute("data-upload-fail", "");
-  wrap.className = "sticky-action";
-
-  const msg = document.createElement("p");
-  msg.className = "muted upload-fail-msg";
-  msg.textContent = message || "Check your signal, then try again.";
-
-  const retry = document.createElement("button");
-  retry.className = "primary-button";
-  retry.type = "button";
-  retry.textContent = "Try again now";
-  retry.addEventListener("click", () => {
-    if (_track) clearTimeout(_track.retryTimer);
-    forceRetry();
-  });
-
-  const later = document.createElement("button");
-  later.className = "secondary-button";
-  later.type = "button";
-  later.textContent = "Finish later";
-  later.style.marginTop = "8px";
-  later.addEventListener("click", () => {
-    const t = _track;
-    if (t && t.finish) t.finish("later");
-    // Photos stay saved on the phone; the queue sends them next time the
-    // app is open with signal (or from Settings > Drain now).
-    _isUploading = false;
-    _session.uploadStatus = "queued";
-    _showScreen("home");
-  });
-
-  wrap.append(msg, retry, later);
-  screen.appendChild(wrap);
-}
-
-function hideFailureActions() {
-  const el = document.querySelector("[data-upload-fail]");
-  if (el) el.remove();
-}
-
-// Keep the screen from dimming and locking while photos upload. Supported on
-// iOS 16.4+ and Android Chrome; silently skipped elsewhere.
-async function keepAwake(on) {
-  try {
-    if (on) {
-      if (_wakeLock || !("wakeLock" in navigator) || document.visibilityState !== "visible") return;
-      _wakeLock = await navigator.wakeLock.request("screen");
-      _wakeLock.addEventListener("release", () => { _wakeLock = null; });
-    } else if (_wakeLock) {
-      const l = _wakeLock; _wakeLock = null;
-      await l.release();
-    }
-  } catch (err) {
-    _wakeLock = null;
-  }
+  paintDeck();
+  paintSummary();
 }
