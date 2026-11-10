@@ -34,6 +34,18 @@ const AUTO_RETRY_LIMIT = 20;
 
 let _dbPromise = null;
 
+// Live progress for the upload screen. Fired on window as
+// "dealerscan:photo-progress" with detail:
+//   { itemId, index, state, fraction }
+//   state: "sending" (fraction 0..1 of the photo sent), "saving" (sent,
+//          waiting for the backend to save it in Drive), "saved" (the
+//          backend confirmed it's in Drive), "failed"
+// and "dealerscan:item-progress" with { itemId, state: "uploading" |
+// "done" | "failed", error? } for the scan as a whole.
+function emit(name, detail) {
+  try { window.dispatchEvent(new CustomEvent(name, { detail })); } catch {}
+}
+
 function getDB() {
   if (_dbPromise) return _dbPromise;
   _dbPromise = new Promise((resolve, reject) => {
@@ -219,18 +231,22 @@ async function _processQueueInner(onProgress) {
       if (!navigator.onLine) break;
       try {
         if (onProgress) onProgress({ stage: "starting", customer: item.customerName });
+        emit("dealerscan:item-progress", { itemId: item.id, state: "uploading" });
         const ok = await _processItem(item, { createCustomerFolder, uploadPhoto, compressDataUrl }, onProgress);
         if (ok) {
           await remove(item.id);
           uploaded++;
           if (onProgress) onProgress({ stage: "done", customer: item.customerName });
+          emit("dealerscan:item-progress", { itemId: item.id, state: "done", folderId: item.folderId || null });
         } else {
           failed++;
+          emit("dealerscan:item-progress", { itemId: item.id, state: "failed" });
         }
       } catch (err) {
         console.warn("[offlineQueue] upload failed for", item.customerName, err);
         await markFailed(item.id, err?.message || String(err)).catch(() => {});
         failed++;
+        emit("dealerscan:item-progress", { itemId: item.id, state: "failed", error: err?.message || String(err) });
       }
     }
   }
@@ -248,6 +264,7 @@ async function _processItem(item, api, onProgress) {
   if (!folderId) {
     folderId = await api.createCustomerFolder(item.customerName, item.salesName, !!item.isNewCustomer);
     await updateRecord(item.id, (r) => { r.folderId = folderId; });
+    item.folderId = folderId;
   }
 
   // 2) Older queue entries may predate upload ids / compression — fix
@@ -288,10 +305,17 @@ async function _processItem(item, api, onProgress) {
       const { index, photo } = pending[next++];
       try {
         const base64 = (photo.dataUrl || "").split(",")[1] || photo.dataUrl;
+        emit("dealerscan:photo-progress", { itemId: item.id, index, state: "sending", fraction: 0 });
         await api.uploadPhoto(folderId, base64, photo.filename, {
           uploadId: photo.uploadId,
           retry: isRetry,
+          onProgress: (fraction) => emit("dealerscan:photo-progress", {
+            itemId: item.id, index,
+            state: fraction >= 1 ? "saving" : "sending",
+            fraction,
+          }),
         });
+        emit("dealerscan:photo-progress", { itemId: item.id, index, state: "saved", fraction: 1 });
         await updateRecord(item.id, (r) => {
           if (!r.photos[index]) return false;
           r.photos[index].done = true;
@@ -303,6 +327,7 @@ async function _processItem(item, api, onProgress) {
         }
       } catch (err) {
         if (!firstError) firstError = err;
+        emit("dealerscan:photo-progress", { itemId: item.id, index, state: "failed", fraction: 0 });
       }
     }
   }

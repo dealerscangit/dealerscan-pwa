@@ -47,11 +47,14 @@ export function renderDone() {
     if (checkIcon) checkIcon.classList.add("done-check-queued");
   } else {
     const n = _session.photos.filter((p) => p.status === "success").length;
+    const word = n === 1 ? "photo" : "photos";
     if (heading) heading.textContent = "All set";
     if (summary) {
-      // Photos are saved on the phone and uploading in the background, so
-      // don't claim they're already in Drive. Home shows "Synced" when done.
-      summary.textContent = `${n} ${n === 1 ? "photo" : "photos"} for ${customer} saved and uploading. Safe to close the app.`;
+      // Only reached after the upload screen got Drive's confirmation for
+      // every photo ("verified" = the folder check also passed).
+      summary.textContent = _session.uploadStatus === "verified"
+        ? `${n} ${word} for ${customer} ${n === 1 ? "is" : "are"} in Drive. Checked and verified.`
+        : `${n} ${word} for ${customer} ${n === 1 ? "is" : "are"} saved in Drive.`;
     }
     if (checkIcon) checkIcon.classList.remove("done-check-queued");
   }
