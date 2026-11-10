@@ -3766,3 +3766,17 @@ main:has([data-screen="camera"]:not([hidden])) {
   padding: 7px 12px; border-radius: 8px; cursor: pointer;
 }
 .viewas-banner-stop:active { transform: scale(0.96); }
+
+/* ── Live upload progress (upload screen) ── */
+.upload-live { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 18px; }
+.upload-bar { height: 12px; border-radius: 99px; background: var(--surface-strong); border: 1px solid var(--border); overflow: hidden; }
+.upload-bar-fill { height: 100%; width: 0%; border-radius: 99px; background: var(--accent-grad); transition: width 0.25s ease; }
+.upload-bar-fill.is-done { background: linear-gradient(90deg, #34d399, #10b981); }
+.upload-bar-fill.is-failed { background: linear-gradient(90deg, #f59e0b, #d97706); }
+.upload-bar-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; color: var(--text); }
+.upload-bar-row #upload-bar-pct { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.upload-keep-open { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.4); color: #fde68a; font-size: 14px; line-height: 1.4; }
+.upload-keep-open[hidden] { display: none; }
+.upload-keep-open svg { flex-shrink: 0; margin-top: 1px; }
+.upload-note { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--surface-strong); border: 1px solid var(--border); font-size: 14px; color: var(--text); }
+.upload-fail-msg { margin: 0 0 10px; text-align: center; }

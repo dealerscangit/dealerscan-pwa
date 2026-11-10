@@ -77,13 +77,21 @@ export async function createCustomerFolder(customerName, salesName, isNew) {
  * @param {string} [opts.uploadId] - unique per photo; backend ignores re-sends
  * @param {boolean} [opts.retry]   - true when re-sending from the queue
  */
+// The backend answers "OK" only after the photo is saved in Drive, so a
+// resolved call means the photo is really there.
+//
+// Keep this a plain fetch with Content-Type text/plain and no extra headers
+// or listeners: that's a "simple" cross-origin request, so the browser sends
+// it straight to Apps Script. Anything that triggers a CORS preflight
+// (XHR upload-progress listeners, custom headers, JSON content type) fails,
+// because Apps Script can't answer the preflight OPTIONS request. (Learned
+// the hard way 2026-11-10: an XHR progress listener broke every upload.)
 export async function uploadPhoto(folderId, photoBase64, filename = "scan.jpg", opts = {}) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("action", "uploadPhoto");
   _attachAuth(url);
   const res = await fetchWithTimeout(url.toString(), {
     method: "POST",
-    // Apps Script doPost is finicky with Content-Type; text/plain avoids CORS preflight
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({
       folderId,
