@@ -11,7 +11,7 @@
 
 import { getCurrentSalesperson } from "../currentUser.js";
 import { createCustomerFolder, listFolderFiles } from "../apiClient.js";
-import { enqueue as enqueueOffline, newUploadId } from "../offlineQueue.js";
+import { enqueue as enqueueOffline, newUploadId, getAll as getQueuedScans } from "../offlineQueue.js";
 import { reportError } from "../errorReporter.js";
 import { compressDataUrl } from "../imageCompress.js";
 import { invalidate as invalidateCache } from "../dataCache.js";
@@ -358,20 +358,91 @@ function trackUpload(itemId, photos, folderId, startedAt) {
         hideFailureActions();
         paintLive();
       } else if (d.state === "failed") {
-        t.failed = true;
-        paintLive();
-        showFailureActions(navigator.onLine ? "Trying again in 15 seconds. Check your signal if it keeps failing." : "No signal. It'll pick up as soon as you're back online.");
-        clearTimeout(t.retryTimer);
-        if (navigator.onLine) t.retryTimer = setTimeout(forceRetry, 15000);
+        onFailed();
       } else if (d.state === "done") {
         t.folderId = d.folderId || t.folderId;
-        photos.forEach((p, i) => { p.status = "success"; p.progressState = "saved"; t.state[i] = { state: "saved", fraction: 1 }; });
-        advanceDeck();
-        paintLive("verifying");
-        const verified = await verifyInDrive(t.folderId, n, t.startedAt);
-        finish(verified ? "verified" : "saved");
+        complete();
       }
     };
+
+    function markSaved(i) {
+      if (!t.state[i] || t.state[i].state === "saved") return false;
+      t.state[i] = { state: "saved", fraction: 1 };
+      const photo = photos[i];
+      if (photo) { photo.status = "success"; photo.progressState = "saved"; photo.progress = 1; }
+      return true;
+    }
+
+    function onFailed() {
+      if (t.finished || t.verifying) return;
+      t.failed = true;
+      // Anything not confirmed is shown as not through yet.
+      t.state.forEach((st, i) => {
+        if (st.state !== "saved") {
+          t.state[i] = { state: "failed", fraction: 0 };
+          if (photos[i]) { photos[i].status = "failed"; photos[i].progressState = "failed"; }
+        }
+      });
+      advanceDeck();
+      paintLive();
+      showFailureActions(navigator.onLine ? "Trying again in 15 seconds. Check your signal if it keeps failing." : "No signal. It'll pick up as soon as you're back online.");
+      clearTimeout(t.retryTimer);
+      if (navigator.onLine) t.retryTimer = setTimeout(forceRetry, 15000);
+    }
+
+    // Every photo is confirmed saved: double-check Drive, then finish.
+    async function complete() {
+      if (t.finished || t.verifying) return;
+      t.verifying = true;
+      t.failed = false;
+      hideFailureActions();
+      photos.forEach((p, i) => markSaved(i));
+      advanceDeck();
+      paintLive("verifying");
+      const verified = await verifyInDrive(t.folderId, n, t.startedAt);
+      finish(verified ? "verified" : "saved");
+    }
+
+    // The source of truth is the upload list saved on the phone: the queue
+    // marks each photo done the moment the backend confirms it's in Drive,
+    // and removes the scan when all are in. Checking it every second keeps
+    // this screen correct even if progress events are missed (for example
+    // when the phone still has an older copy of the upload engine cached
+    // right after an update, which is what left the screen stuck at 0% on
+    // 2026-11-10 while the photos were already in Drive).
+    t.seenAttempts = 0;
+    t.poll = setInterval(async () => {
+      if (t.finished || t.verifying || t.polling) return;
+      t.polling = true;
+      try {
+        const rec = (await getQueuedScans()).find((r) => r.id === itemId);
+        if (!rec) { complete(); return; }
+        if (rec.folderId) t.folderId = rec.folderId;
+        let changed = false;
+        (rec.photos || []).forEach((p, i) => { if (p.done && markSaved(i)) changed = true; });
+        // Show the next photos as on their way when no live events arrive.
+        if (!t.failed) {
+          let inFlight = t.state.filter((st) => st.state === "sending").length;
+          t.state.forEach((st, i) => {
+            if ((st.state === "waiting" || st.state === "failed") && inFlight < 2 && t.started) {
+              t.state[i] = { state: "sending", fraction: 0 };
+              if (photos[i]) { photos[i].progressState = "sending"; photos[i].status = "active"; }
+              inFlight++; changed = true;
+            }
+          });
+        }
+        if ((rec.attempts || 0) > t.seenAttempts) {
+          t.seenAttempts = rec.attempts || 0;
+          onFailed();
+        }
+        if (changed) { advanceDeck(); paintLive(); }
+        t.started = true;
+      } catch (err) {
+        console.warn("[upload] couldn't read the upload list:", err);
+      } finally {
+        t.polling = false;
+      }
+    }, 1000);
     t.onVisible = () => {
       if (document.visibilityState === "hidden") { t.wasHidden = true; keepAwake(false); return; }
       if (t.finished) return;
@@ -412,6 +483,7 @@ function trackUpload(itemId, photos, folderId, startedAt) {
       window.removeEventListener("offline", t.onOffline);
       window.removeEventListener("online", t.onOnline);
       clearTimeout(t.retryTimer);
+      clearInterval(t.poll);
       keepAwake(false);
       hideFailureActions();
       if (_track === t) _track = null;
